@@ -1,13 +1,4 @@
 -- seeds/connections_seed.sql
-INSERT INTO public.connections (name, title, type, logo, description, enabled)
-VALUES (
-        'nobitex',
-        'Nobitex',
-        'CEX',
-        'https://nobitex.ir/favicon.png',
-        'Nobitex is a digital currency exchange in Iran.',
-        true
-    );
 INSERT INTO auth.users (
         instance_id,
         id,
@@ -75,4 +66,29 @@ VALUES (
         current_timestamp,
         current_timestamp,
         current_timestamp
+    );
+INSERT INTO public.connections (name, title, type, logo, description, enabled)
+VALUES (
+        'nobitex',
+        'Nobitex',
+        'CEX',
+        'https://nobitex.ir/favicon.png',
+        'Nobitex is a digital currency exchange in Iran.',
+        true
+    );
+INSERT INTO public.portfolios (
+        user_id,
+        connection_name,
+        title,
+        color
+    )
+VALUES (
+        (
+            SELECT id
+            FROM auth.users
+            WHERE email = 'adam@orca.com'
+        ),
+        'nobitex',
+        'Adam Portfolio',
+        '#a11043'
     );
