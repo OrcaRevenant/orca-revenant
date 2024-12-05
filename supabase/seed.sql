@@ -1,4 +1,4 @@
--- seeds/connections_seed.sql
+-- seeds/connection_seed.sql
 INSERT INTO auth.users (
         instance_id,
         id,
@@ -67,7 +67,7 @@ VALUES (
         current_timestamp,
         current_timestamp
     );
-INSERT INTO public.connections (name, title, type, logo, description, enabled)
+INSERT INTO public.connection (name, title, type, logo, description, enabled)
 VALUES (
         'nobitex',
         'Nobitex',
@@ -76,7 +76,7 @@ VALUES (
         'Nobitex is a digital currency exchange in Iran.',
         true
     );
-INSERT INTO public.portfolios (
+INSERT INTO public.portfolio (
         user_id,
         connection_name,
         title,
