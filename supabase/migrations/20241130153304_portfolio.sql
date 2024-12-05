@@ -13,6 +13,49 @@ create table public.portfolios (
     "user_id" uuid not null references auth.users on delete cascade default auth.uid(),
     "title" varchar(250) not null,
     "color" char(7) not null default '#000000' check (color ~ '^#[0-9A-Fa-f]{6}$'),
-    "status" text not null check (status in ('disabled', 'active', 'inactive')),
     "created_at" timestamp with time zone not null default now()
 );
+--   ____                            _   _                   ____       _ _      _           
+--  / ___|___  _ __  _ __   ___  ___| |_(_) ___  _ __  ___  |  _ \ ___ | (_) ___(_) ___  ___ 
+-- | |   / _ \| '_ \| '_ \ / _ \/ __| __| |/ _ \| '_ \/ __| | |_) / _ \| | |/ __| |/ _ \/ __|
+-- | |__| (_) | | | | | | |  __/ (__| |_| | (_) | | | \__ \ |  __/ (_) | | | (__| |  __/\__ \
+--  \____\___/|_| |_|_| |_|\___|\___|\__|_|\___/|_| |_|___/ |_|   \___/|_|_|\___|_|\___||___/
+alter table "public"."connections" enable row level security;
+revoke
+insert,
+    update,
+    delete on table "public"."connections"
+from anon,
+    authenticated;
+create policy "Enable read access for all users" on "public"."connections" as PERMISSIVE for
+SELECT to authenticated,
+    anon using (true);
+--  ____            _    __       _ _         ____       _ _      _           
+-- |  _ \ _ __ ___ | |_ / _| ___ | (_) ___   |  _ \ ___ | (_) ___(_) ___  ___ 
+-- | |_) | '__/ _ \| __| |_ / _ \| | |/ _ \  | |_) / _ \| | |/ __| |/ _ \/ __|
+-- |  __/| | | (_) | |_|  _| (_) | | | (_) | |  __/ (_) | | | (__| |  __/\__ \
+-- |_|   |_|  \___/ \__|_|  \___/|_|_|\___/  |_|   \___/|_|_|\___|_|\___||___/
+alter table "public"."portfolios" enable row level security;
+create policy "Enable users to view their own data only" on "public"."portfolios" as PERMISSIVE for
+SELECT to authenticated using (
+        (
+            select auth.uid()
+        ) = user_id
+    );
+create policy "Enable insert for users based on user_id" on "public"."portfolios" as PERMISSIVE for
+INSERT to authenticated with check (
+        (
+            select auth.uid()
+        ) = user_id
+    );
+create policy "Enable delete for users based on user_id" on "public"."portfolios" as PERMISSIVE for DELETE to authenticated using (
+    (
+        select auth.uid()
+    ) = user_id
+);
+create policy "Enable update for users based on user_id" on "public"."portfolios" as PERMISSIVE for
+UPDATE to authenticated using (
+        (
+            select auth.uid()
+        ) = user_id
+    );
