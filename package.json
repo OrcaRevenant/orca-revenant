@@ -1,0 +1,17 @@
+{
+  "name": "orca-revenant",
+  "version": "1.0.0",
+  "description": "",
+  "author": "localX",
+  "main": "index.js",
+  "scripts": {
+    "start": "supabase start",
+    "restart:db": "supabase db restart",
+    "run:functions": "supabase functions serve --no-verify-jwt --env-file .env.local",
+    "gen:types": "supabase gen types typescript --local > database.types.ts"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "supabase": "^2.0.0"
+  }
+}
