@@ -7,6 +7,7 @@
   "scripts": {
     "start:supabase": "supabase start",
     "restart:db": "supabase db restart",
+    "start:web-service": "turbo run --filter=\"web-service\"",
     "run:functions": "supabase functions serve --no-verify-jwt --env-file .env.local",
     "gen:types": "supabase gen types typescript --local > database.types.ts",
     "build": "turbo build",
