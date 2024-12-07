@@ -5,13 +5,26 @@
   "author": "localX",
   "main": "index.js",
   "scripts": {
-    "start": "supabase start",
+    "start:supabase": "supabase start",
     "restart:db": "supabase db restart",
     "run:functions": "supabase functions serve --no-verify-jwt --env-file .env.local",
-    "gen:types": "supabase gen types typescript --local > database.types.ts"
+    "gen:types": "supabase gen types typescript --local > database.types.ts",
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "license": "ISC",
+  "dependencies": {
+    "prettier": "^3.2.5",
+    "turbo": "^2.3.3",
+    "typescript": "5.5.4"
+  },
   "devDependencies": {
     "supabase": "^2.0.0"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=18"
   }
 }
