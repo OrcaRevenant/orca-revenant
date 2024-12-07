@@ -5,15 +5,16 @@
   "author": "localX",
   "main": "index.js",
   "scripts": {
+    "build": "turbo build",
+    "start:dev": "turbo dev",
+    "lint": "turbo lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "start:supabase": "supabase start",
     "restart:db": "supabase db restart",
-    "start:web-service": "turbo run --filter=\"web-service\"",
     "run:functions": "supabase functions serve --no-verify-jwt --env-file .env.local",
     "gen:types": "supabase gen types typescript --local > database.types.ts",
-    "build": "turbo build",
-    "dev": "turbo dev",
-    "lint": "turbo lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "apps:web-service": "turbo run --filter=\"web-service\"",
+    "start:dev:web-service": "turbo run --filter=\"web-service\" start:dev"
   },
   "license": "ISC",
   "dependencies": {
