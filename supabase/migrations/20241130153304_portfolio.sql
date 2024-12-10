@@ -20,6 +20,8 @@ create table public.portfolio (
 -- | |   / _ \| '_ \| '_ \ / _ \/ __| __| |/ _ \| '_ \/ __| | |_) / _ \| | |/ __| |/ _ \/ __|
 -- | |__| (_) | | | | | | |  __/ (__| |_| | (_) | | | \__ \ |  __/ (_) | | | (__| |  __/\__ \
 --  \____\___/|_| |_|_| |_|\___|\___|\__|_|\___/|_| |_|___/ |_|   \___/|_|_|\___|_|\___||___/
+alter table public.portfolio
+add constraint portfolio_pkey primary key (id);
 alter table "public"."connection" enable row level security;
 revoke
 insert,
@@ -35,6 +37,7 @@ SELECT to authenticated,
 -- | |_) | '__/ _ \| __| |_ / _ \| | |/ _ \  | |_) / _ \| | |/ __| |/ _ \/ __|
 -- |  __/| | | (_) | |_|  _| (_) | | | (_) | |  __/ (_) | | | (__| |  __/\__ \
 -- |_|   |_|  \___/ \__|_|  \___/|_|_|\___/  |_|   \___/|_|_|\___|_|\___||___/
+alter table public.portfolio replica identity full;
 alter table "public"."portfolio" enable row level security;
 create policy "Enable users to view their own data only" on "public"."portfolio" as PERMISSIVE for
 SELECT to authenticated using (
@@ -59,3 +62,5 @@ UPDATE to authenticated using (
             select auth.uid()
         ) = user_id
     );
+alter publication supabase_realtime
+add table portfolio;

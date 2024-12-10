@@ -1,32 +1,25 @@
 import { Module } from "@nestjs/common";
 import { NobitexService } from "./nobitex.service";
 import { ConfigModule, ConfigType } from "@nestjs/config";
-import nobitexConfig from "./nobitex.config";
+import nobitexConnectionConfig from "../nobitex-connection.config";
 import { HttpModule } from "@nestjs/axios";
-import { ConnectionAbstract } from "src/connection/connection.abstract";
 
-const InjectedConfig = ConfigModule.forFeature(nobitexConfig);
+const InjectedConfig = ConfigModule.forFeature(nobitexConnectionConfig);
 
 @Module({
   imports: [
-    ConfigModule.forFeature(nobitexConfig),
+    ConfigModule.forFeature(nobitexConnectionConfig),
     HttpModule.registerAsync({
       imports: [InjectedConfig],
-      useFactory: (config: ConfigType<typeof nobitexConfig>) => {
+      useFactory: (config: ConfigType<typeof nobitexConnectionConfig>) => {
         return {
           baseURL: `https://api.nobitex.ir`, // TODO: fix config and env manager in turbo repo
         };
       },
-      inject: [nobitexConfig.KEY],
+      inject: [nobitexConnectionConfig.KEY],
     }),
   ],
-  providers: [
-    NobitexService,
-    {
-      provide: ConnectionAbstract,
-      useExisting: NobitexService,
-    },
-  ],
+  providers: [NobitexService],
   exports: [NobitexService],
 })
 export class NobitexModule {}

@@ -4,6 +4,7 @@ import { AppService } from "./app.service";
 import { ConnectionModule } from "./connection/connection.module";
 import { ConfigModule } from "@nestjs/config";
 import appConfig from "./app.config";
+import { SupabaseModule } from "./supabase/supabase.module";
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import appConfig from "./app.config";
         development: [`.env.development.local`, `.env.development`, `.env`],
       }[process.env.NODE_ENV || `development`],
     }),
+    SupabaseModule,
     ConnectionModule,
   ],
   controllers: [AppController],
