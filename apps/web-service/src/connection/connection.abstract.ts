@@ -9,10 +9,13 @@ export type Asset = {
 
 export type TransactionType = `buy` | `sell` | `withdrawal` | `deposit`;
 
+export type UniqueIdentifier = string | number;
+
 export type Transaction = {
     time: string;
     amount: number;
     fee: number;
     asset: string;
     type: TransactionType;
+    portfolio_id: UniqueIdentifier;
 };

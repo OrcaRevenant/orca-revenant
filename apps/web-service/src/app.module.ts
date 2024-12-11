@@ -5,6 +5,7 @@ import { ConnectionModule } from "./connection/connection.module";
 import { ConfigModule } from "@nestjs/config";
 import appConfig from "./app.config";
 import { SupabaseModule } from "./supabase/supabase.module";
+import { PortfolioModule } from "./portfolio/portfolio.module";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { SupabaseModule } from "./supabase/supabase.module";
     }),
     SupabaseModule,
     ConnectionModule,
+    PortfolioModule,
   ],
   controllers: [AppController],
   providers: [AppService],

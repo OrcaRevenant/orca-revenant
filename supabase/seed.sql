@@ -95,7 +95,8 @@ INSERT INTO public.portfolio (
         user_id,
         connection_name,
         title,
-        color
+        color,
+        api_key
     )
 VALUES (
         (
@@ -105,7 +106,8 @@ VALUES (
         ),
         'nobitex',
         'Adam Portfolio',
-        '#a11043'
+        '#a11043',
+        '87b43f761d0703ce217ade970887a2e0623a2d0d'
     );
 --     _                 _   
 --    / \   ___ ___  ___| |_ 

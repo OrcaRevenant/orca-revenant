@@ -1,8 +1,8 @@
-import { Injectable, OnModuleInit } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 @Injectable()
-export class SupabaseService implements OnModuleInit {
+export class SupabaseService {
     private readonly supabase: SupabaseClient;
 
     constructor() {
@@ -12,26 +12,7 @@ export class SupabaseService implements OnModuleInit {
         this.supabase = createClient(SUPABASE_URL, SUPABASE__SERVICE_ROLE_KEY);
     }
 
-    onModuleInit() {
-        this.listenToPortfolioInserts();
-    }
-
     getClient(): SupabaseClient {
         return this.supabase;
-    }
-    handleInserts(payload: any) {
-        console.log("Change received!", payload);
-    }
-
-    private listenToPortfolioInserts() {
-        console.log(`listening to changes in portfolio`);
-        this.supabase
-            .channel("portfolio")
-            .on("postgres_changes", {
-                event: "INSERT",
-                schema: "public",
-                table: "portfolio",
-            }, this.handleInserts)
-            .subscribe();
     }
 }

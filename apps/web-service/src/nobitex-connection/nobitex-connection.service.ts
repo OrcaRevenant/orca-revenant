@@ -35,11 +35,12 @@ export class NobitexConnectionService implements ConnectionAbstract {
 
         return allUserTransactions.map((v) => {
             return {
-                amount: Math.abs(+v.amount),
-                fee: +v.calculatedFee,
+                amount: Math.abs(+(v.amount || 0)),
+                fee: +(v.calculatedFee || 0),
                 asset: v.currency,
                 time: v.created_at,
                 type: getTransactionTypeFromDescription(v),
+                portfolio_id: 1,
             };
         }).sort((a, b) =>
             new Date(a.time).getTime() - new Date(b.time).getTime()
