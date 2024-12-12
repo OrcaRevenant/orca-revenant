@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { ConnectionAbstract } from "./connection.abstract";
-import { NobitexConnectionService } from "src/nobitex-connection/nobitex-connection.service";
+import { NobitexConnectionService } from "@/nobitex-connection/nobitex-connection.service";
 
 @Injectable()
 export class ConnectionFactory {

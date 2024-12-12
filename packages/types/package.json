@@ -1,0 +1,23 @@
+{
+  "name": "@orca/types",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./database": {
+      "import": "./src/database.types.ts",
+      "require": "./dist/database.types.d.ts"
+    }
+  },
+  "types": "./src/database.types.ts",
+  "scripts": {
+    "clean": "rm -rf .turbo node_modules dist",
+    "build": "tsc",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2"
+  }
+}

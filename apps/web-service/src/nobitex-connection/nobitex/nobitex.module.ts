@@ -13,7 +13,7 @@ const InjectedConfig = ConfigModule.forFeature(nobitexConnectionConfig);
       imports: [InjectedConfig],
       useFactory: (config: ConfigType<typeof nobitexConnectionConfig>) => {
         return {
-          baseURL: `https://api.nobitex.ir`, // TODO: fix config and env manager in turbo repo
+          baseURL: config.baseUrl, // TODO: fix config and env manager in turbo repo
         };
       },
       inject: [nobitexConnectionConfig.KEY],

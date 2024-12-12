@@ -1,6 +1,7 @@
 export abstract class ConnectionAbstract {
     abstract getAssets(apiKey: string): Promise<Asset[]>;
     abstract getTransactions(apiKey: string): Promise<Transaction[]>;
+    abstract checkHealth(apiKey: string): Promise<Health>;
 }
 
 export type Asset = {
@@ -19,3 +20,5 @@ export type Transaction = {
     type: TransactionType;
     portfolio_id: UniqueIdentifier;
 };
+
+export type Health = `alive` | `dead`;

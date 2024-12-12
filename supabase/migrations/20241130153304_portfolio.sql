@@ -15,7 +15,9 @@ create table public.portfolio (
     "title" varchar(250) not null,
     "api_key" text not null,
     "color" char(7) not null default '#000000' check (color ~ '^#[0-9A-Fa-f]{6}$'),
-    "created_at" timestamp with time zone not null default now()
+    "created_at" timestamp with time zone not null default now(),
+    "status" text not null default 'inactive' check (status in ('active', 'inactive', 'disabled')),
+    "last_sync_at" timestamp with time zone default null
 );
 --   ____                            _   _                   ____       _ _      _           
 --  / ___|___  _ __  _ __   ___  ___| |_(_) ___  _ __  ___  |  _ \ ___ | (_) ___(_) ___  ___ 
@@ -33,10 +35,10 @@ create policy "Enable read access for all users" on "public"."connection" as PER
 SELECT to authenticated,
     anon using (true);
 --  ____            _    __       _ _         ____       _ _      _           
--- |  _ \ _ __ ___ | |_ / _| ___ | (_) ___   |  _ \ ___ | (_) ___(_) ___  ___ 
--- | |_) | '__/ _ \| __| |_ / _ \| | |/ _ \  | |_) / _ \| | |/ __| |/ _ \/ __|
--- |  __/| | | (_) | |_|  _| (_) | | | (_) | |  __/ (_) | | | (__| |  __/\__ \
--- |_|   |_|  \___/ \__|_|  \___/|_|_|\___/  |_|   \___/|_|_|\___|_|\___||___/
+-- |  _ \ ___  _ __| |_ / _| ___ | (_) ___   |  _ \ ___ | (_) ___(_) ___  ___ 
+-- | |_) / _ \| '__| __| |_ / _ \| | |/ _ \  | |_) / _ \| | |/ __| |/ _ \/ __|
+-- |  __/ (_) | |  | |_|  _| (_) | | | (_) | |  __/ (_) | | | (__| |  __/\__ \
+-- |_|   \___/|_|   \__|_|  \___/|_|_|\___/  |_|   \___/|_|_|\___|_|\___||___/
 alter table public.portfolio replica identity full;
 alter table "public"."portfolio" enable row level security;
 create policy "Enable users to view their own data only" on "public"."portfolio" as PERMISSIVE for

@@ -1,4 +1,4 @@
-import { TransactionType } from "src/connection/connection.abstract";
+import { TransactionType } from "@/connection/connection.abstract";
 import { TransactionsResponse } from "./nobitex.types";
 
 export function getTransactionTypeFromDescription(

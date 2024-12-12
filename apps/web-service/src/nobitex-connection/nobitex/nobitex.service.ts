@@ -3,137 +3,86 @@ import nobitexConnectionConfig from "../nobitex-connection.config";
 import { ConfigType } from "@nestjs/config";
 import { HttpService } from "@nestjs/axios";
 import {
-    DepositResponse,
     NobitexOptionsResponse,
     TransactionsResponse,
     WalletsResponse,
 } from "./nobitex.types";
 import { catchError, firstValueFrom, Observable } from "rxjs";
-import { AxiosError, AxiosResponse } from "axios";
+import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 
 @Injectable()
 export class NobitexService {
     constructor(
-        @Inject(nobitexConnectionConfig.KEY) private config: ConfigType<
-            typeof nobitexConnectionConfig
-        >,
+        @Inject(nobitexConnectionConfig.KEY) private readonly config:
+            ConfigType<typeof nobitexConnectionConfig>,
         private readonly httpService: HttpService,
     ) {}
 
-    async getWallets(apiKey: string) {
-        const observable = this.httpService.get<WalletsResponse>(
-            `/v2/wallets`,
-            {
-                params: {
-                    type: `spot`,
-                },
-                headers: {
-                    Authorization: `Token ${apiKey}`,
-                },
-            },
-        );
+    async getProfile(apiKey: string) {
+        return this.fetchData<WalletsResponse>(`/users/profile`, apiKey);
+    }
 
-        const { data } = await this.handleRequest(observable);
-        return data;
+    async getWallets(apiKey: string) {
+        return this.fetchData<WalletsResponse>(`/v2/wallets`, apiKey, {
+            params: { type: "spot" },
+        });
     }
 
     async getAvailableAssets(apiKey: string) {
-        const observable = this.httpService.get<NobitexOptionsResponse>(
-            `/v2/options`,
-            {
-                headers: {
-                    Authorization: `Token ${apiKey}`,
-                },
-            },
-        );
-        const { data } = await this.handleRequest(observable);
-        return data;
+        return this.fetchData<NobitexOptionsResponse>(`/v2/options`, apiKey);
     }
 
     async getTransactions(
         apiKey: string,
         wallet: number,
         page = 1,
-    ) {
+    ): Promise<any[]> {
         const pageSize = 100;
-        const observable = this.httpService.get<TransactionsResponse>(
+        const response = await this.fetchData<TransactionsResponse>(
             `/users/wallets/transactions/list`,
+            apiKey,
             {
-                params: {
-                    page,
-                    pageSize,
-                    wallet: wallet,
-                },
-                headers: {
-                    Authorization: `Token ${apiKey}`,
-                },
+                params: { page, pageSize, wallet },
             },
         );
 
-        const { data } = await this.handleRequest(observable);
+        const transactions = response.transactions;
 
-        const transactions = [...data.transactions];
-
-        if (data.transactions.length === pageSize) {
-            const nextTransactions = await this.getTransactions(
+        if (transactions.length === pageSize) {
+            const nextPageTransactions = await this.getTransactions(
                 apiKey,
                 wallet,
                 page + 1,
             );
-
-            transactions.push(
-                ...nextTransactions,
-            );
+            transactions.push(...nextPageTransactions);
         }
 
         return transactions;
     }
 
-    async getDeposits(
+    private async fetchData<T>(
+        url: string,
         apiKey: string,
-        wallet: number,
-        page = 1,
-    ) {
-        const observable = this.httpService.get<DepositResponse>(
-            `/users/wallets/deposits/list`,
-            {
-                params: {
-                    page,
-                    pageSize: 100,
-                    wallet: wallet,
-                },
-                headers: {
-                    Authorization: `Token ${apiKey}`,
-                },
-            },
-        );
+        options: AxiosRequestConfig = {},
+    ): Promise<T> {
+        const observable = this.httpService.get<T>(url, {
+            headers: { Authorization: `Token ${apiKey}`, ...options.headers },
+            ...options,
+        });
 
         const { data } = await this.handleRequest(observable);
-
-        const transactions = [...data.deposits];
-
-        if (data.hasNext) {
-            const nextTransactions = await this.getDeposits(
-                apiKey,
-                wallet,
-                page + 1,
-            );
-
-            transactions.push(
-                ...nextTransactions,
-            );
-        }
-
-        return transactions;
+        return data;
     }
 
-    private handleRequest<T>(request: Observable<AxiosResponse<T>>) {
-        const observed = request.pipe(
-            catchError((error: AxiosError) => {
-                throw error;
-            }),
+    private handleRequest<T>(
+        request: Observable<AxiosResponse<T>>,
+    ): Promise<AxiosResponse<T>> {
+        return firstValueFrom(
+            request.pipe(
+                catchError((error: AxiosError) => {
+                    throw error;
+                }),
+            ),
         );
-
-        return firstValueFrom(observed);
     }
 }

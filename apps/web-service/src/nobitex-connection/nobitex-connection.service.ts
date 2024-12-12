@@ -2,19 +2,24 @@ import { Injectable } from "@nestjs/common";
 import {
     Asset,
     ConnectionAbstract,
+    Health,
     Transaction,
-} from "src/connection/connection.abstract";
-import { SupabaseService } from "src/supabase/supabase.service";
+} from "@/connection/connection.abstract";
+import { SupabaseService } from "@/supabase/supabase.service";
 import { NobitexService } from "./nobitex/nobitex.service";
 import { getTransactionTypeFromDescription } from "./nobitex/nobitex.utils";
 
-// 87b43f761d0703ce217ade970887a2e0623a2d0d
 @Injectable()
 export class NobitexConnectionService implements ConnectionAbstract {
     constructor(
         private readonly supabaseService: SupabaseService,
         private readonly nobitexService: NobitexService,
     ) {
+    }
+
+    async checkHealth(apiKey: string): Promise<Health> {
+        const { status } = await this.nobitexService.getProfile(apiKey);
+        return status === `ok` ? `alive` : `dead`;
     }
 
     async getTransactions(apiKey: string): Promise<Transaction[]> {
