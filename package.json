@@ -10,11 +10,11 @@
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "start:supabase": "supabase start",
-    "restart:db": "supabase db restart",
+    "reset:db": "supabase db reset && pnpm run typegen",
     "run:functions": "supabase functions serve --no-verify-jwt --env-file .env.local",
     "gen:types": "supabase gen types typescript --local > database.types.ts",
-    "apps:web-service": "turbo run --filter=\"web-service\"",
-    "start:dev:web-service": "turbo run --filter=\"web-service\" start:dev"
+    "app:web-service": "turbo run --filter=\"web-service\"",
+    "typegen": "supabase gen types typescript --local > ./packages/types/src/database.types.ts"
   },
   "license": "ISC",
   "dependencies": {

@@ -1,4 +1,9 @@
 -- seeds/connection_seed.sql
+--  _   _               
+-- | | | |___  ___ _ __ 
+-- | | | / __|/ _ \ '__|
+-- | |_| \__ \  __/ |   
+--  \___/|___/\___|_|   
 INSERT INTO auth.users (
         instance_id,
         id,
@@ -67,6 +72,11 @@ VALUES (
         current_timestamp,
         current_timestamp
     );
+--   ____                            _   _             
+--  / ___|___  _ __  _ __   ___  ___| |_(_) ___  _ __  
+-- | |   / _ \| '_ \| '_ \ / _ \/ __| __| |/ _ \| '_ \ 
+-- | |__| (_) | | | | | | |  __/ (__| |_| | (_) | | | |
+--  \____\___/|_| |_|_| |_|\___|\___|\__|_|\___/|_| |_|
 INSERT INTO public.connection (name, title, type, logo, description, enabled)
 VALUES (
         'nobitex',
@@ -76,11 +86,17 @@ VALUES (
         'Nobitex is a digital currency exchange in Iran.',
         true
     );
+--  ____            _    __       _ _       
+-- |  _ \ ___  _ __| |_ / _| ___ | (_) ___  
+-- | |_) / _ \| '__| __| |_ / _ \| | |/ _ \ 
+-- |  __/ (_) | |  | |_|  _| (_) | | | (_) |
+-- |_|   \___/|_|   \__|_|  \___/|_|_|\___/ 
 INSERT INTO public.portfolio (
         user_id,
         connection_name,
         title,
-        color
+        color,
+        api_key
     )
 VALUES (
         (
@@ -90,5 +106,27 @@ VALUES (
         ),
         'nobitex',
         'Adam Portfolio',
-        '#a11043'
+        '#a11043',
+        '87b43f761d0703ce217ade970887a2e0623a2d0d'
+    );
+--     _                 _   
+--    / \   ___ ___  ___| |_ 
+--   / _ \ / __/ __|/ _ \ __|
+--  / ___ \\__ \__ \  __/ |_ 
+-- /_/   \_\___/___/\___|\__|
+INSERT INTO public.asset (name, symbol, logo)
+VALUES (
+        'Bitcoin',
+        'btc',
+        'https://bin.bnbstatic.com/static/assets/logos/BTC.png'
+    ),
+    (
+        'Ethereum',
+        'eth',
+        'https://bin.bnbstatic.com/static/assets/logos/ETH.png'
+    ),
+    (
+        'Tether',
+        'usdt',
+        'https://bin.bnbstatic.com/static/assets/logos/USDT.png'
     );
