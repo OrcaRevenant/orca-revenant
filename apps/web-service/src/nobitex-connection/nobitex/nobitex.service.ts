@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import nobitexConnectionConfig from "../nobitex-connection.config";
+import nobitexConnectionConfig from "./nobitex.config";
 import { ConfigType } from "@nestjs/config";
 import { HttpService } from "@nestjs/axios";
 import {

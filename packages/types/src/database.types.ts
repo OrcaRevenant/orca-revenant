@@ -38,7 +38,6 @@ export type Database = {
         Row: {
           alt_names: string[] | null
           created_at: string | null
-          id: number
           logo: string | null
           name: string
           symbol: string
@@ -46,7 +45,6 @@ export type Database = {
         Insert: {
           alt_names?: string[] | null
           created_at?: string | null
-          id?: number
           logo?: string | null
           name: string
           symbol: string
@@ -54,7 +52,6 @@ export type Database = {
         Update: {
           alt_names?: string[] | null
           created_at?: string | null
-          id?: number
           logo?: string | null
           name?: string
           symbol?: string
@@ -156,6 +153,32 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "connection"
             referencedColumns: ["name"]
+          },
+        ]
+      }
+      price: {
+        Row: {
+          asset: string
+          price: number
+          time: string
+        }
+        Insert: {
+          asset: string
+          price: number
+          time?: string
+        }
+        Update: {
+          asset?: string
+          price?: number
+          time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_asset_fkey"
+            columns: ["asset"]
+            isOneToOne: false
+            referencedRelation: "asset"
+            referencedColumns: ["symbol"]
           },
         ]
       }
