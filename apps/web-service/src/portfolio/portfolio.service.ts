@@ -41,7 +41,8 @@ export class PortfolioService implements OnModuleInit {
 
                     if (!lastSyncAt || lastSyncAt < syncThreshold) {
                         try {
-                            await this.connection.syncTransactions(portfolio);
+                            await this.syncPortfolio(portfolio);
+
                             syncedCount++;
                             return { portfolio, synced: true };
                         } catch (error) {
@@ -78,17 +79,30 @@ export class PortfolioService implements OnModuleInit {
                     schema: "public",
                     table: "portfolio",
                 },
-                this.handleInserts,
+                async (payload) => await this.handleInserts(payload),
             )
             .subscribe();
     }
 
-    private handleInserts(
+    private async handleInserts(
         payload: RealtimePostgresInsertPayload<
             Database["public"]["Tables"]["portfolio"]["Row"]
         >,
     ) {
         console.log("Portfolio change received!", payload);
-        this.connection.syncTransactions(payload.new);
+        await this.syncPortfolio(payload.new);
+    }
+
+    private async syncPortfolio(
+        portfolio: Database["public"]["Tables"]["portfolio"]["Row"],
+    ) {
+        try {
+            await this.connection.syncTransactions(portfolio);
+            await this.connection.syncPortfolioAssets(
+                portfolio,
+            );
+        } catch {
+            console.log(`Failed trying to sync portfolio (id=${portfolio.id})`);
+        }
     }
 }

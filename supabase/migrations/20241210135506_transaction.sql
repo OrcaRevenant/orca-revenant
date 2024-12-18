@@ -7,7 +7,6 @@ create table public.transaction (
     "amount" numeric null default 0 check (amount >= 0),
     "time" timestamp with time zone,
     "type" text not null check (type in ('buy', 'sell', 'withdrawal', 'deposit')),
-    "created_at" timestamp with time zone default current_timestamp,
     constraint transaction_pkey primary key (id)
 );
 --  _____                               _   _               ____       _ _      _           

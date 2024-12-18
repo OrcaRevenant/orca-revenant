@@ -2,8 +2,7 @@ create table public.asset (
     "symbol" text not null primary key,
     "name" text not null,
     "logo" text null check (logo ~ '^https?://.*$'),
-    "alt_names" text [] default '{}',
-    "created_at" timestamp with time zone default current_timestamp
+    "alt_names" text [] default '{}'
 );
 --     _                 _     ____       _ _      _           
 --    / \   ___ ___  ___| |_  |  _ \ ___ | (_) ___(_) ___  ___ 

@@ -6,7 +6,7 @@ import { ConfigModule } from "@nestjs/config";
 import appConfig from "./app.config";
 import { SupabaseModule } from "./supabase/supabase.module";
 import { PortfolioModule } from "./portfolio/portfolio.module";
-import { PriceModule } from "./price/price.module";
+// import { PriceModule } from "./price/price.module";
 import { ScheduleModule } from "@nestjs/schedule";
 
 @Module({
@@ -20,7 +20,7 @@ import { ScheduleModule } from "@nestjs/schedule";
       }[process.env.NODE_ENV || `development`],
     }),
     ScheduleModule.forRoot(),
-    PriceModule.forRoot(true),
+    // PriceModule.forRoot(true),
     SupabaseModule,
     ConnectionModule,
     PortfolioModule,

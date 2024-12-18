@@ -4,6 +4,7 @@ import { ConfigType } from "@nestjs/config";
 import { HttpService } from "@nestjs/axios";
 import {
     NobitexOptionsResponse,
+    Transaction,
     TransactionsResponse,
     WalletsResponse,
 } from "./nobitex.types";
@@ -36,7 +37,7 @@ export class NobitexService {
         apiKey: string,
         wallet: number,
         page = 1,
-    ): Promise<any[]> {
+    ): Promise<Transaction[]> {
         const pageSize = 100;
         const response = await this.fetchData<TransactionsResponse>(
             `/users/wallets/transactions/list`,
@@ -54,6 +55,7 @@ export class NobitexService {
                 wallet,
                 page + 1,
             );
+
             transactions.push(...nextPageTransactions);
         }
 

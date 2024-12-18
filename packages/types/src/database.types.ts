@@ -37,21 +37,18 @@ export type Database = {
       asset: {
         Row: {
           alt_names: string[] | null
-          created_at: string | null
           logo: string | null
           name: string
           symbol: string
         }
         Insert: {
           alt_names?: string[] | null
-          created_at?: string | null
           logo?: string | null
           name: string
           symbol: string
         }
         Update: {
           alt_names?: string[] | null
-          created_at?: string | null
           logo?: string | null
           name?: string
           symbol?: string
@@ -156,6 +153,32 @@ export type Database = {
           },
         ]
       }
+      portfolio_assets: {
+        Row: {
+          amount: number
+          asset: string
+          portfolio_id: number
+        }
+        Insert: {
+          amount?: number
+          asset: string
+          portfolio_id: number
+        }
+        Update: {
+          amount?: number
+          asset?: string
+          portfolio_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_assets_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price: {
         Row: {
           asset: string
@@ -186,7 +209,6 @@ export type Database = {
         Row: {
           amount: number | null
           asset: string
-          created_at: string | null
           fee: number | null
           hash: string
           id: number
@@ -197,7 +219,6 @@ export type Database = {
         Insert: {
           amount?: number | null
           asset: string
-          created_at?: string | null
           fee?: number | null
           hash: string
           id?: number
@@ -208,7 +229,6 @@ export type Database = {
         Update: {
           amount?: number | null
           asset?: string
-          created_at?: string | null
           fee?: number | null
           hash?: string
           id?: number
