@@ -13,6 +13,9 @@
     "reset:db": "supabase db reset && pnpm run typegen",
     "run:functions": "supabase functions serve --no-verify-jwt --env-file .env.local",
     "gen:types": "supabase gen types typescript --local > database.types.ts",
+    "apps:web-service": "turbo run --filter=\"web-service\"",
+    "start:dev:web-service-doc": "turbo run --filter=\"web-service-doc\" start:dev",
+    "start:dev:web-service": "turbo run --filter=\"web-service\" start:dev"
     "app:web-service": "turbo run --filter=\"web-service\"",
     "typegen": "supabase gen types typescript --local > ./packages/types/src/database.types.ts"
   },
@@ -23,10 +26,16 @@
     "typescript": "5.5.4"
   },
   "devDependencies": {
-    "supabase": "^2.0.0"
+    "supabase": "^2.0.0",
+    "turbo": "^2.3.3"
   },
   "packageManager": "pnpm@9.0.0",
   "engines": {
     "node": ">=18"
-  }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "private": true
 }
