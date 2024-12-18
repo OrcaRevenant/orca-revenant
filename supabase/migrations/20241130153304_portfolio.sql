@@ -19,6 +19,12 @@ create table public.portfolio (
     "status" text not null default 'inactive' check (status in ('active', 'inactive', 'disabled')),
     "last_sync_at" timestamp with time zone default null
 );
+create table public.portfolio_assets (
+    "portfolio_id" bigint not null references public.portfolio("id") on delete cascade,
+    "asset" text not null,
+    "amount" numeric not null default 0 check (amount >= 0),
+    constraint portfolio_assets_pkey primary key (portfolio_id, asset)
+);
 --   ____                            _   _                   ____       _ _      _           
 --  / ___|___  _ __  _ __   ___  ___| |_(_) ___  _ __  ___  |  _ \ ___ | (_) ___(_) ___  ___ 
 -- | |   / _ \| '_ \| '_ \ / _ \/ __| __| |/ _ \| '_ \/ __| | |_) / _ \| | |/ __| |/ _ \/ __|
