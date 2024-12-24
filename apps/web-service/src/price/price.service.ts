@@ -1,9 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import { SupabaseService } from "@/supabase/supabase.service";
 import { PriceAbstract } from "./price.abstract";
 import { Database } from "@orca/types";
 import dayjs from "dayjs";
+import priceConfig from "./price.config";
+import { ConfigType } from "@nestjs/config";
+import { Cron } from "@nestjs/schedule";
 
 // TODO: Handle concurrency for PriceService
 // Ensure that only one process at a time fills price gaps or updates prices for a specific asset.
@@ -16,6 +18,9 @@ import dayjs from "dayjs";
 @Injectable()
 export class PriceService {
     constructor(
+        @Inject(priceConfig.KEY) private readonly config: ConfigType<
+            typeof priceConfig
+        >,
         @Inject("PriceProvider") private readonly priceProvider: PriceAbstract,
         private readonly supabaseService: SupabaseService,
     ) {
@@ -53,10 +58,33 @@ export class PriceService {
 
     private async performBackfill(assetSymbol: string): Promise<boolean> {
         const currentTimestamp = dayjs();
+
         const startTrackingFromDate = await this.determineStartTrackingDate(
             assetSymbol,
             currentTimestamp,
         );
+
+        const oldestTransactionDate = await this.getOldestTransactionDate(
+            assetSymbol,
+        );
+
+        if (
+            oldestTransactionDate &&
+            dayjs(oldestTransactionDate).isBefore(startTrackingFromDate)
+        ) {
+            console.log(
+                `Filling older transactions for asset: ${assetSymbol}`,
+                `Start: ${oldestTransactionDate.toISOString()}`,
+                `End: ${startTrackingFromDate.toISOString()}`,
+            );
+
+            const timestamps = this.generateTimestamps(
+                dayjs(oldestTransactionDate),
+                startTrackingFromDate,
+            );
+
+            await this.fillPriceGaps(assetSymbol, timestamps);
+        }
 
         console.log(
             `Backfilling data for asset: ${assetSymbol}`,
@@ -143,6 +171,25 @@ export class PriceService {
         return new Date(data.time);
     }
 
+    private async getOldestTransactionDate(
+        asset: string,
+    ): Promise<Date | null> {
+        const { data, error } = await this.supabaseService
+            .getClient()
+            .from("transaction")
+            .select("time")
+            .eq("asset", asset)
+            .order("time", { ascending: true })
+            .limit(1)
+            .single();
+
+        if (error || !data) {
+            return null;
+        }
+
+        return new Date(data.time);
+    }
+
     private async savePrice(
         prices: Database[`public`][`Tables`][`price`][`Insert`][],
     ) {
@@ -168,7 +215,6 @@ export class PriceService {
     private generateTimestamps(
         start: dayjs.Dayjs,
         end: dayjs.Dayjs,
-        interval: number = 1,
     ): string[] {
         if (start.isAfter(end)) {
             console.warn(
@@ -182,7 +228,7 @@ export class PriceService {
 
         while (current.isBefore(end)) {
             timestamps.push(current.toISOString());
-            current = current.add(interval, "minutes");
+            current = current.add(this.config.interval, "minutes");
         }
 
         return timestamps;
