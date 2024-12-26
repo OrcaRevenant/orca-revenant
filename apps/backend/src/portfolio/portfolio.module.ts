@@ -1,10 +1,13 @@
 import { Module } from "@nestjs/common";
-import { PortfolioService } from "./portfolio.service";
 import { SupabaseModule } from "@/common/supabase/supabase.module";
-import { ConnectionModule } from "@/connection/connection.module";
+import { PortfolioController } from "./portfolio.controller";
+import { PortfolioRepository } from "./portfolio.repository";
+import { PortfolioService } from "./portfolio.service";
 
 @Module({
-  imports: [SupabaseModule, ConnectionModule],
-  providers: [PortfolioService],
+  imports: [SupabaseModule],
+  providers: [PortfolioService, PortfolioRepository],
+  controllers: [PortfolioController],
+  exports: [PortfolioService],
 })
 export class PortfolioModule {}

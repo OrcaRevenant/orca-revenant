@@ -1,5 +1,6 @@
 import { SupabaseService } from "@/common/supabase/supabase.service";
 import { Injectable } from "@nestjs/common";
+import { Connection } from "./connection.types";
 
 @Injectable()
 export class ConnectionRepository {
@@ -7,7 +8,7 @@ export class ConnectionRepository {
 
     constructor(private readonly supabaseService: SupabaseService) {}
 
-    async findAll() {
+    async findAll(): Promise<Connection[]> {
         const client = this.supabaseService.getClient();
         const { data, error } = await client.from(this.table).select("*");
         if (error) {
@@ -17,7 +18,7 @@ export class ConnectionRepository {
         return data;
     }
 
-    async findOne(name: string) {
+    async findOne(name: string): Promise<Connection> {
         const client = this.supabaseService.getClient();
         const { data, error } = await client
             .from(this.table)

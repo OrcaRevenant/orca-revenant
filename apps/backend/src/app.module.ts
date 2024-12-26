@@ -10,6 +10,7 @@ import { ConnectionModule } from "./connection/connection.module";
 import { APP_INTERCEPTOR } from "@nestjs/core";
 import { ResponseInterceptor } from "./shared/interceptors/response.interceptor";
 import { ExceptionModule } from "./common/exception/exception.module";
+import { PortfolioModule } from "./portfolio/portfolio.module";
 
 @Module({
   imports: [
@@ -26,9 +27,9 @@ import { ExceptionModule } from "./common/exception/exception.module";
     ScheduleModule.forRoot(),
     AuthModule,
     ConnectionModule,
+    PortfolioModule,
     // PriceModule.forRoot(true),
     // ConnectionModule,
-    // PortfolioModule,
   ],
   controllers: [AppController],
   providers: [AppService, {

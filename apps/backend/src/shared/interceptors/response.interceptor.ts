@@ -14,7 +14,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T> {
         return next.handle().pipe(
             map((data) => ResponseUtil.success(data)),
             catchError((err) => {
-                throw ResponseUtil.error(err.message || err);
+                throw err;
             }),
         );
     }
