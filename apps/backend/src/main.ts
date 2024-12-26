@@ -3,11 +3,13 @@ import { AppModule } from "./app.module";
 import { ConfigService, ConfigType } from "@nestjs/config";
 import appConfig from "./app.config";
 import { ValidationPipe } from "@nestjs/common";
+import { ExceptionHandlerService } from "./common/exception/exception-handler.service";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService<ConfigType<typeof appConfig>>);
 
+  app.useGlobalFilters(app.get(ExceptionHandlerService));
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
   const port = config.get(`port`, { infer: true })!;

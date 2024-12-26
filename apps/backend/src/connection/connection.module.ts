@@ -1,13 +1,13 @@
 import { Module } from "@nestjs/common";
+import { ConnectionController } from "./connection.controller";
 import { ConnectionService } from "./connection.service";
-import { NobitexConnectionModule } from "@/nobitex-connection/nobitex-connection.module";
-import { ConnectionFactory } from "./connection.factory";
+import { ConnectionRepository } from "./connection.repository";
 import { SupabaseModule } from "@/common/supabase/supabase.module";
 
 @Module({
-  imports: [NobitexConnectionModule, SupabaseModule],
-  providers: [ConnectionService, ConnectionFactory],
+  imports: [SupabaseModule],
+  controllers: [ConnectionController],
+  providers: [ConnectionService, ConnectionRepository],
   exports: [ConnectionService],
-  controllers: [],
 })
 export class ConnectionModule {}
