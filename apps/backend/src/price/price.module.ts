@@ -1,7 +1,7 @@
 import { DynamicModule, Module } from "@nestjs/common";
 import { MockModule } from "./mock/mock.module";
 import { PriceService } from "./price.service";
-import { SupabaseModule } from "@/supabase/supabase.module";
+import { SupabaseModule } from "@/common/supabase/supabase.module";
 import priceConfig from "./price.config";
 import { ConfigModule } from "@nestjs/config";
 

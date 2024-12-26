@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { SupabaseService } from "@/supabase/supabase.service";
+import { SupabaseService } from "@/common/supabase/supabase.service";
 import { PriceAbstract } from "./price.abstract";
 import { Database } from "@orca/types";
 import dayjs from "dayjs";

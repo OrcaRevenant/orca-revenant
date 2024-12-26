@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { ConnectionService } from "@/connection/connection.service";
-import { SupabaseService } from "@/supabase/supabase.service";
+import { SupabaseService } from "@/common/supabase/supabase.service";
 import { Database } from "@orca/types";
 import { RealtimePostgresInsertPayload } from "@supabase/supabase-js";
 

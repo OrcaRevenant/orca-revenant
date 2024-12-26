@@ -13,10 +13,8 @@
     "reset:db": "supabase db reset && pnpm run typegen",
     "run:functions": "supabase functions serve --no-verify-jwt --env-file .env.local",
     "gen:types": "supabase gen types typescript --local > database.types.ts",
-    "apps:web-service": "turbo run --filter=\"web-service\"",
-    "start:dev:web-service-doc": "turbo run --filter=\"web-service-doc\" start:dev",
-    "start:dev:web-service": "turbo run --filter=\"web-service\" start:dev",
-    "app:web-service": "turbo run --filter=\"web-service\"",
+    "doc:start": "turbo run --filter=\"doc\" start:dev",
+    "app:backend": "turbo run --filter=\"backend\"",
     "typegen": "supabase gen types typescript --local > ./packages/types/src/database.types.ts"
   },
   "license": "ISC",

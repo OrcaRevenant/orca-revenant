@@ -5,7 +5,7 @@ import {
     Health,
     Transaction,
 } from "@/connection/connection.abstract";
-import { SupabaseService } from "@/supabase/supabase.service";
+import { SupabaseService } from "@/common/supabase/supabase.service";
 import { NobitexService } from "./nobitex/nobitex.service";
 import { getTransactionTypeFromDescription } from "./nobitex/nobitex.utils";
 

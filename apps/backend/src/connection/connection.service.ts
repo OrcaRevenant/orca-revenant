@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { ConnectionFactory } from "./connection.factory";
-import { SupabaseService } from "@/supabase/supabase.service";
+import { SupabaseService } from "@/common/supabase/supabase.service";
 import { generateTransactionHash } from "./connection.utils";
 import { Database } from "@orca/types";
 import { UniqueIdentifier } from "./connection.abstract";
