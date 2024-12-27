@@ -1,6 +1,6 @@
 import { IsHexColor, IsNotEmpty, IsString } from "class-validator";
 
-export class PortfolioBaseDto {
+export class CreatePortfolioDto {
     @IsString()
     @IsNotEmpty()
     apiKey: string;
@@ -15,10 +15,4 @@ export class PortfolioBaseDto {
 
     @IsHexColor()
     color: string;
-}
-
-export class CreatePortfolioDto extends PortfolioBaseDto {
-}
-
-export class UpdatePortfolioDto extends PortfolioBaseDto {
 }

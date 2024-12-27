@@ -11,6 +11,7 @@ import { APP_INTERCEPTOR } from "@nestjs/core";
 import { ResponseInterceptor } from "./shared/interceptors/response.interceptor";
 import { ExceptionModule } from "./common/exception/exception.module";
 import { PortfolioModule } from "./portfolio/portfolio.module";
+import { FeedbackModule } from "./feedback/feedback.module";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PortfolioModule } from "./portfolio/portfolio.module";
     AuthModule,
     ConnectionModule,
     PortfolioModule,
+    FeedbackModule,
     // PriceModule.forRoot(true),
     // ConnectionModule,
   ],

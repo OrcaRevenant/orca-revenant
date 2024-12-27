@@ -12,7 +12,7 @@ import {
 import { JwtGuard } from "@/auth/jwt.guard";
 import { PortfolioService } from "./portfolio.service";
 import { AuthUserRequest } from "@/shared/types/request.types";
-import { CreatePortfolioDto, UpdatePortfolioDto } from "./portfolio.dto";
+import { CreatePortfolioDto, UpdatePortfolioDto } from "./dto";
 
 @Controller("portfolios")
 export class PortfolioController {
@@ -20,39 +20,33 @@ export class PortfolioController {
 
     @Get()
     @UseGuards(JwtGuard)
-    async getAll(@Req() req: AuthUserRequest) {
+    async findAll(@Req() req: AuthUserRequest) {
         const userId = req.user.sub;
-        return this.portfolioService.getAllByUserId(userId);
+        return this.portfolioService.findAll(userId);
     }
 
     @Get(":id")
     @UseGuards(JwtGuard)
-    async getById(@Req() req: AuthUserRequest, @Param("id") id: string) {
+    async findOne(@Req() req: AuthUserRequest, @Param("id") id: string) {
         const userId = req.user.sub;
-        return this.portfolioService.getOneByUserId(id, userId);
+        return this.portfolioService.findOne(id, userId);
     }
 
     @Delete(":id")
     @UseGuards(JwtGuard)
-    async delete(@Req() req: AuthUserRequest, @Param("id") id: string) {
+    async remove(@Req() req: AuthUserRequest, @Param("id") id: string) {
         const userId = req.user.sub;
-        return this.portfolioService.delete(id, userId);
+        return this.portfolioService.remove(id, userId);
     }
 
     @Post()
     @UseGuards(JwtGuard)
     async create(
         @Req() req: AuthUserRequest,
-        @Body() body: CreatePortfolioDto,
+        @Body() dto: CreatePortfolioDto,
     ) {
         const userId = req.user.sub;
-        return this.portfolioService.create({
-            user_id: userId,
-            api_key: body.apiKey,
-            connection_name: body.connection,
-            title: body.title,
-            color: body.color,
-        });
+        return this.portfolioService.create(dto, userId);
     }
 
     @Patch(":id")
@@ -60,15 +54,9 @@ export class PortfolioController {
     async update(
         @Req() req: AuthUserRequest,
         @Param("id") id: string,
-        @Body() body: UpdatePortfolioDto,
+        @Body() dto: UpdatePortfolioDto,
     ) {
         const userId = req.user.sub;
-        return this.portfolioService.update(id, {
-            user_id: userId,
-            api_key: body.apiKey,
-            connection_name: body.connection,
-            title: body.title,
-            color: body.color,
-        });
+        return this.portfolioService.update(id, dto, userId);
     }
 }

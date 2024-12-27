@@ -5,11 +5,11 @@ import { ConnectionRepository } from "./connection.repository";
 export class ConnectionService {
     constructor(private readonly connectionRepository: ConnectionRepository) {}
 
-    async getAll() {
+    async findAll() {
         return this.connectionRepository.findAll();
     }
 
-    async getByName(name: string) {
+    async findOne(name: string) {
         return this.connectionRepository.findOne(name);
     }
 }

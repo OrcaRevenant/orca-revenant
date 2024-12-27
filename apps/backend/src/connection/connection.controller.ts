@@ -8,13 +8,13 @@ export class ConnectionController {
 
     @Get()
     @UseGuards(JwtGuard)
-    async getAll() {
-        return this.connectionService.getAll();
+    async findAll() {
+        return this.connectionService.findAll();
     }
 
     @Get(":name")
     @UseGuards(JwtGuard)
-    async getById(@Param("name") name: string) {
-        return this.connectionService.getByName(name);
+    async findOne(@Param("name") name: string) {
+        return this.connectionService.findOne(name);
     }
 }
