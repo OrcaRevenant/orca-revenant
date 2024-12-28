@@ -1,11 +1,14 @@
 import { Injectable } from "@nestjs/common";
 import { PortfolioRepository } from "./portfolio.repository";
-import { UpdatePortfolio } from "./portfolio.types";
 import { CreatePortfolioDto, UpdatePortfolioDto } from "./dto";
+import { PortfolioSyncService } from "@/portfolio-sync/portfolio-sync.service";
 
 @Injectable()
 export class PortfolioService {
-    constructor(private readonly portfolioRepository: PortfolioRepository) {}
+    constructor(
+        private readonly portfolioRepository: PortfolioRepository,
+        private readonly portfolioSyncService: PortfolioSyncService,
+    ) {}
 
     async findAll(userId: string) {
         return this.portfolioRepository.findByUserId(userId);
@@ -16,13 +19,17 @@ export class PortfolioService {
     }
 
     async create(createPortfolioDto: CreatePortfolioDto, userId: string) {
-        return this.portfolioRepository.create({
+        const portfolio = await this.portfolioRepository.create({
             api_key: createPortfolioDto.apiKey,
             connection_name: createPortfolioDto.connection,
             title: createPortfolioDto.title,
             color: createPortfolioDto.color,
             user_id: userId,
         });
+
+        await this.portfolioSyncService.enqueueSyncJob(portfolio);
+
+        return portfolio;
     }
 
     async update(

@@ -8,9 +8,9 @@ export class FeedbackService {
 
   async create(createFeedbackDto: CreateFeedbackDto, userId: string) {
     return this.feedbackRepository.create({
-      user_id: userId,
       content: createFeedbackDto.content,
       title: createFeedbackDto.title,
+      user_id: userId,
     });
   }
 }

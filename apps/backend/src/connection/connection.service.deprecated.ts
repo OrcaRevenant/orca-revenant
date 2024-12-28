@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { ConnectionFactory } from "./connection.factory";
 import { SupabaseService } from "@/common/supabase/supabase.service";
-import { generateTransactionHash } from "./connection.utils";
+import { generateTransactionHash } from "../transaction/transaction.utils";
 import { Database } from "@orca/types";
 import { UniqueIdentifier } from "./connection.abstract";
 import { isAxiosError } from "axios";

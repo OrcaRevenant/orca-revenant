@@ -12,6 +12,10 @@ import { ResponseInterceptor } from "./shared/interceptors/response.interceptor"
 import { ExceptionModule } from "./common/exception/exception.module";
 import { PortfolioModule } from "./portfolio/portfolio.module";
 import { FeedbackModule } from "./feedback/feedback.module";
+import { TransactionModule } from "./transaction/transaction.module";
+import { BullBoardModule } from "@bull-board/nestjs";
+import { ExpressAdapter } from "@bull-board/express";
+import { BullModule } from "@nestjs/bullmq";
 
 @Module({
   imports: [
@@ -25,13 +29,22 @@ import { FeedbackModule } from "./feedback/feedback.module";
     }),
     ExceptionModule,
     PassportModule,
+    BullModule.forRoot({
+      connection: {
+        host: "localhost",
+        port: 6379,
+      },
+    }),
+    BullBoardModule.forRoot({
+      route: "/queues",
+      adapter: ExpressAdapter,
+    }),
     ScheduleModule.forRoot(),
     AuthModule,
     ConnectionModule,
-    PortfolioModule,
     FeedbackModule,
-    // PriceModule.forRoot(true),
-    // ConnectionModule,
+    TransactionModule,
+    PortfolioModule,
   ],
   controllers: [AppController],
   providers: [AppService, {

@@ -1,5 +1,5 @@
 import * as crypto from "crypto";
-import { UniqueIdentifier } from "./connection.abstract";
+import { UniqueIdentifier } from "../connection/connection.abstract";
 
 export function generateTransactionHash(transactionId: UniqueIdentifier) {
     const data = `${transactionId}`;

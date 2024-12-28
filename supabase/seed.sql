@@ -107,7 +107,7 @@ VALUES (
         'nobitex',
         'Adam Portfolio',
         '#a11043',
-        '4f86776d44e270826d65e1475357d19df5659809'
+        '2458b9bf0187511c25ab8778d6ceabece428d7ea'
     );
 --     _                 _   
 --    / \   ___ ___  ___| |_ 

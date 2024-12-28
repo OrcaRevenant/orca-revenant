@@ -3,7 +3,9 @@ import { ConnectionRepository } from "./connection.repository";
 
 @Injectable()
 export class ConnectionService {
-    constructor(private readonly connectionRepository: ConnectionRepository) {}
+    constructor(
+        private readonly connectionRepository: ConnectionRepository,
+    ) {}
 
     async findAll() {
         return this.connectionRepository.findAll();

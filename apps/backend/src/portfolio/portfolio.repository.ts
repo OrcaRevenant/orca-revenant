@@ -1,6 +1,7 @@
 import { SupabaseService } from "@/common/supabase/supabase.service";
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { CreatePortfolio, Portfolio, UpdatePortfolio } from "./portfolio.types";
+import { UniqueIdentifier } from "@/connection/connection.abstract";
 
 @Injectable()
 export class PortfolioRepository {
@@ -22,7 +23,7 @@ export class PortfolioRepository {
     }
 
     async update(
-        id: string,
+        id: UniqueIdentifier,
         payload: UpdatePortfolio,
     ): Promise<Portfolio> {
         const client = this.supabaseService.getClient();
@@ -31,14 +32,15 @@ export class PortfolioRepository {
             .eq("id", id).select(`*`).single();
 
         if (error) {
-            throw new Error(
-                `Error updating record with ID ${id}: ${error.message}`,
-            );
+            throw new Error(error.message);
         }
         return data;
     }
 
-    async delete(id: string, userId: string): Promise<boolean> {
+    async delete(
+        id: UniqueIdentifier,
+        userId: UniqueIdentifier,
+    ): Promise<boolean> {
         const client = this.supabaseService.getClient();
         const { data, error } = await client.from(this.table).delete().eq(
             "user_id",
@@ -53,29 +55,28 @@ export class PortfolioRepository {
         }
 
         if (error) {
-            throw new Error(
-                `Error deleting record with ID ${id}: ${error.message}`,
-            );
+            throw new Error(error.message);
         }
 
         return true;
     }
 
-    async findByUserId(userId: string): Promise<Portfolio[]> {
+    async findByUserId(userId: UniqueIdentifier): Promise<Portfolio[]> {
         const client = this.supabaseService.getClient();
         const { data, error } = await client.from(this.table).select("*").eq(
             "user_id",
             userId,
         );
         if (error) {
-            throw new Error(
-                `Error fetching records for user ID ${userId}: ${error.message}`,
-            );
+            throw new Error(error.message);
         }
         return data;
     }
 
-    async findOneByUserId(id: string, userId: string): Promise<Portfolio> {
+    async findOneByUserId(
+        id: UniqueIdentifier,
+        userId: UniqueIdentifier,
+    ): Promise<Portfolio> {
         const client = this.supabaseService.getClient();
         const { data, error } = await client.from(this.table).select("*").eq(
             "user_id",
@@ -83,10 +84,28 @@ export class PortfolioRepository {
         ).eq("id", id).single();
 
         if (error) {
-            throw new Error(
-                `Error fetching records for user ID ${userId}: ${error.message}`,
-            );
+            throw new Error(error.message);
         }
+        return data;
+    }
+
+    async updateStatus(
+        portfolio: Portfolio,
+        status: Portfolio[`status`],
+    ): Promise<Portfolio> {
+        const { data, error } = await this.supabaseService.getClient()
+            .from("portfolio")
+            .update({
+                status,
+                last_sync_at: new Date().toISOString(),
+            })
+            .eq("id", portfolio.id).eq("user_id", portfolio.user_id).select(`*`)
+            .single();
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
         return data;
     }
 }
