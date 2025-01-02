@@ -41,6 +41,25 @@ VALUES (
         '',
         '',
         ''
+    ),
+    (
+        '00000000-0000-0000-0000-000000000000',
+        uuid_generate_v4 (),
+        'authenticated',
+        'authenticated',
+        'eve@orca.com',
+        crypt('123456', gen_salt('bf')),
+        current_timestamp,
+        current_timestamp,
+        current_timestamp,
+        '{"provider":"email","providers":["email"]}',
+        '{}',
+        current_timestamp,
+        current_timestamp,
+        '',
+        '',
+        '',
+        ''
     );
 INSERT INTO auth.identities (
         provider_id,
@@ -66,6 +85,27 @@ VALUES (
                 WHERE email = 'adam@orca.com'
             )::text,
             'adam@orca.com'
+        )::jsonb,
+        'email',
+        current_timestamp,
+        current_timestamp,
+        current_timestamp
+    ),
+    (
+        uuid_generate_v4 (),
+        (
+            SELECT id
+            FROM auth.users
+            WHERE email = 'eve@orca.com'
+        ),
+        format(
+            '{"sub":"%s","email":"%s"}',
+            (
+                SELECT id
+                FROM auth.users
+                WHERE email = 'eve@orca.com'
+            )::text,
+            'eve@orca.com'
         )::jsonb,
         'email',
         current_timestamp,
@@ -107,7 +147,7 @@ VALUES (
         'nobitex',
         'Adam Portfolio',
         '#a11043',
-        '2458b9bf0187511c25ab8778d6ceabece428d7ea'
+        '3099ac0863cd456d1a5977f847a4f334b6c4cc80'
     );
 --     _                 _   
 --    / \   ___ ___  ___| |_ 

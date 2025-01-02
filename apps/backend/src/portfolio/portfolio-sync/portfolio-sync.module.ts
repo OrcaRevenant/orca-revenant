@@ -1,13 +1,13 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 import { PortfolioSyncService } from "./portfolio-sync.service";
-import { PortfolioRepository } from "@/portfolio/portfolio.repository";
-import { TransactionRepository } from "@/transaction/transaction.repository";
 import { SupabaseModule } from "@/common/supabase/supabase.module";
 import { ConnectionModule } from "@/connection/connection.module";
 import { BullModule } from "@nestjs/bullmq";
 import { PortfolioSyncProcessor } from "./portfolio-sync.processor";
 import { BullBoardModule } from "@bull-board/nestjs";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
+import { TransactionModule } from "@/transaction/transaction.module";
+import { PortfolioModule } from "@/portfolio/portfolio.module";
 
 @Module({
   imports: [
@@ -20,11 +20,11 @@ import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
     }),
     SupabaseModule,
     ConnectionModule,
+    TransactionModule,
+    forwardRef(() => PortfolioModule),
   ],
   providers: [
     PortfolioSyncService,
-    PortfolioRepository,
-    TransactionRepository,
     PortfolioSyncProcessor,
   ],
   exports: [PortfolioSyncService],

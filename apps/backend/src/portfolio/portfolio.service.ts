@@ -1,21 +1,29 @@
 import { Injectable } from "@nestjs/common";
 import { PortfolioRepository } from "./portfolio.repository";
 import { CreatePortfolioDto, UpdatePortfolioDto } from "./dto";
-import { PortfolioSyncService } from "@/portfolio-sync/portfolio-sync.service";
+import { PortfolioSyncService } from "@/portfolio/portfolio-sync/portfolio-sync.service";
 
 @Injectable()
 export class PortfolioService {
     constructor(
         private readonly portfolioRepository: PortfolioRepository,
         private readonly portfolioSyncService: PortfolioSyncService,
-    ) {}
+    ) {
+    }
 
-    async findAll(userId: string) {
+    async findAll() {
+        return this.portfolioRepository.findAll();
+    }
+
+    async findByUserId(userId: string) {
         return this.portfolioRepository.findByUserId(userId);
     }
 
-    async findOne(id: string, userId: string) {
-        return this.portfolioRepository.findOneByUserId(id, userId);
+    async findOneByUserId(id: string, userId: string) {
+        return this.portfolioRepository.findOneByUserId(
+            id,
+            userId,
+        );
     }
 
     async create(createPortfolioDto: CreatePortfolioDto, userId: string) {
@@ -37,16 +45,27 @@ export class PortfolioService {
         updatePortfolioDto: UpdatePortfolioDto,
         userId: string,
     ) {
-        return this.portfolioRepository.update(id, {
+        const portfolio = await this.portfolioRepository.update(id, {
             api_key: updatePortfolioDto.apiKey,
             connection_name: updatePortfolioDto.connection,
             title: updatePortfolioDto.title,
             color: updatePortfolioDto.color,
             user_id: userId,
         });
+
+        await this.portfolioSyncService.enqueueSyncJob(portfolio);
+
+        return portfolio;
     }
 
     async remove(id: string, userId: string) {
         return this.portfolioRepository.delete(id, userId);
+    }
+
+    async isPortfolioOwner(
+        portfolioId: string,
+        userId: string,
+    ): Promise<boolean> {
+        return this.portfolioRepository.isPortfolioOwner(portfolioId, userId);
     }
 }

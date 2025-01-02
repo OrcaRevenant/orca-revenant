@@ -3,7 +3,8 @@ import { Injectable, UnauthorizedException } from "@nestjs/common";
 
 @Injectable()
 export class AuthService {
-    constructor(private readonly supabaseService: SupabaseService) {}
+    constructor(private readonly supabaseService: SupabaseService) {
+    }
 
     async signUp(email: string, password: string) {
         const supabase = this.supabaseService.getClient();

@@ -5,17 +5,16 @@ import { ConfigModule } from "@nestjs/config";
 import appConfig from "./app.config";
 import { ScheduleModule } from "@nestjs/schedule";
 import { PassportModule } from "@nestjs/passport";
-import { AuthModule } from "./auth/auth.module";
-import { ConnectionModule } from "./connection/connection.module";
 import { APP_INTERCEPTOR } from "@nestjs/core";
 import { ResponseInterceptor } from "./shared/interceptors/response.interceptor";
 import { ExceptionModule } from "./common/exception/exception.module";
-import { PortfolioModule } from "./portfolio/portfolio.module";
-import { FeedbackModule } from "./feedback/feedback.module";
-import { TransactionModule } from "./transaction/transaction.module";
 import { BullBoardModule } from "@bull-board/nestjs";
 import { ExpressAdapter } from "@bull-board/express";
 import { BullModule } from "@nestjs/bullmq";
+import { ConnectionModule } from "./connection/connection.module";
+import { PortfolioModule } from "./portfolio/portfolio.module";
+import { FeedbackModule } from "./feedback/feedback.module";
+import { AuthModule } from "./auth/auth.module";
 
 @Module({
   imports: [
@@ -36,14 +35,13 @@ import { BullModule } from "@nestjs/bullmq";
       },
     }),
     BullBoardModule.forRoot({
-      route: "/queues",
+      route: "/",
       adapter: ExpressAdapter,
     }),
     ScheduleModule.forRoot(),
     AuthModule,
-    ConnectionModule,
     FeedbackModule,
-    TransactionModule,
+    ConnectionModule,
     PortfolioModule,
   ],
   controllers: [AppController],

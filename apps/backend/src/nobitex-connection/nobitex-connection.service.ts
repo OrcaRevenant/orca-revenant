@@ -5,14 +5,12 @@ import {
     Health,
     Transaction,
 } from "@/connection/connection.abstract";
-import { SupabaseService } from "@/common/supabase/supabase.service";
 import { NobitexService } from "./nobitex/nobitex.service";
 import { getTransactionTypeFromDescription } from "./nobitex/nobitex.utils";
 
 @Injectable()
 export class NobitexConnectionService implements ConnectionAbstract {
     constructor(
-        private readonly supabaseService: SupabaseService,
         private readonly nobitexService: NobitexService,
     ) {
     }

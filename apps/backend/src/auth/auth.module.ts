@@ -4,9 +4,9 @@ import { PassportModule } from "@nestjs/passport";
 import { ConfigModule, ConfigType } from "@nestjs/config";
 import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
-import { SupabaseService } from "@/common/supabase/supabase.service";
 import supabaseConfig from "@/common/supabase/supabase.config";
 import { AuthStrategy } from "./auth.strategy";
+import { SupabaseModule } from "@/common/supabase/supabase.module";
 
 const InjectedConfig = ConfigModule.forFeature(supabaseConfig);
 
@@ -14,6 +14,7 @@ const InjectedConfig = ConfigModule.forFeature(supabaseConfig);
   imports: [
     InjectedConfig,
     PassportModule,
+    SupabaseModule,
     JwtModule.registerAsync({
       imports: [InjectedConfig],
       inject: [supabaseConfig.KEY],
@@ -24,7 +25,7 @@ const InjectedConfig = ConfigModule.forFeature(supabaseConfig);
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, SupabaseService, AuthStrategy],
+  providers: [AuthService, AuthStrategy],
   exports: [AuthService],
 })
 export class AuthModule {}

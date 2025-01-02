@@ -73,6 +73,15 @@ export class PortfolioRepository {
         return data;
     }
 
+    async findAll(): Promise<Portfolio[]> {
+        const client = this.supabaseService.getClient();
+        const { data, error } = await client.from(this.table).select("*");
+        if (error) {
+            throw new Error(error.message);
+        }
+        return data;
+    }
+
     async findOneByUserId(
         id: UniqueIdentifier,
         userId: UniqueIdentifier,
@@ -101,6 +110,39 @@ export class PortfolioRepository {
             })
             .eq("id", portfolio.id).eq("user_id", portfolio.user_id).select(`*`)
             .single();
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        return data;
+    }
+
+    async isPortfolioOwner(
+        portfolioId: UniqueIdentifier,
+        userId: UniqueIdentifier,
+    ): Promise<boolean> {
+        const { data, error } = await this.supabaseService.getClient()
+            .from("portfolio")
+            .select("id, user_id")
+            .eq("id", portfolioId)
+            .single();
+
+        if (error || !data) {
+            return false;
+        }
+
+        return data.user_id === userId;
+    }
+
+    async findUnsyncedPortfolios(minutes: number) {
+        const fiveMinutesAgo = new Date(Date.now() - minutes * 60 * 1000)
+            .toISOString();
+
+        const { data, error } = await this.supabaseService.getClient()
+            .from("portfolio")
+            .select("*")
+            .or(`last_sync_at.is.null,last_sync_at.lt.${fiveMinutesAgo}`);
 
         if (error) {
             throw new Error(error.message);

@@ -8,6 +8,6 @@ import { FeedbackRepository } from "./feedback.repository";
   imports: [SupabaseModule],
   controllers: [FeedbackController],
   providers: [FeedbackService, FeedbackRepository],
-  exports: [FeedbackService],
+  exports: [FeedbackService, FeedbackRepository],
 })
 export class FeedbackModule {}

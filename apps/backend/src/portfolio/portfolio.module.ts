@@ -1,18 +1,24 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 import { SupabaseModule } from "@/common/supabase/supabase.module";
 import { PortfolioController } from "./portfolio.controller";
 import { PortfolioRepository } from "./portfolio.repository";
 import { PortfolioService } from "./portfolio.service";
 import { ConnectionModule } from "@/connection/connection.module";
-import { PortfolioSyncModule } from "@/portfolio-sync/portfolio-sync.module";
+import { PortfolioSyncModule } from "@/portfolio/portfolio-sync/portfolio-sync.module";
+import { PortfolioEventService } from "./portfolio-event.service";
 
 @Module({
-  imports: [SupabaseModule, ConnectionModule, PortfolioSyncModule],
+  imports: [
+    SupabaseModule,
+    ConnectionModule,
+    forwardRef(() => PortfolioSyncModule),
+  ],
   providers: [
     PortfolioService,
     PortfolioRepository,
+    PortfolioEventService,
   ],
   controllers: [PortfolioController],
-  exports: [PortfolioService],
+  exports: [PortfolioService, PortfolioEventService, PortfolioRepository],
 })
 export class PortfolioModule {}
