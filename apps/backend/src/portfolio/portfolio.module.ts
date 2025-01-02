@@ -6,11 +6,13 @@ import { PortfolioService } from "./portfolio.service";
 import { ConnectionModule } from "@/connection/connection.module";
 import { PortfolioSyncModule } from "@/portfolio/portfolio-sync/portfolio-sync.module";
 import { PortfolioEventService } from "./portfolio-event.service";
+import { TransactionModule } from "@/transaction/transaction.module";
 
 @Module({
   imports: [
     SupabaseModule,
     ConnectionModule,
+    TransactionModule,
     forwardRef(() => PortfolioSyncModule),
   ],
   providers: [

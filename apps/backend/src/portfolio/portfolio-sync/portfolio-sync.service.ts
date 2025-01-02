@@ -64,7 +64,7 @@ export class PortfolioSyncService implements OnModuleInit {
                 portfolio.api_key,
             );
 
-            this.transactionRepository.createMany(
+            await this.transactionRepository.createMany(
                 transactions.map((v) => {
                     return {
                         amount: v.amount,

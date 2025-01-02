@@ -42,6 +42,16 @@ export class PortfolioController {
         return this.portfolioService.findOneByUserId(id, userId);
     }
 
+    @Get(":id/transactions")
+    @UseGuards(JwtGuard)
+    async findPortfolioTransactions(
+        @Req() req: AuthUserRequest,
+        @Param("id") id: string,
+    ) {
+        const userId = req.user.sub;
+        return this.portfolioService.findUserPortfolioTransactions(id, userId);
+    }
+
     @Delete(":id")
     @UseGuards(JwtGuard)
     async remove(@Req() req: AuthUserRequest, @Param("id") id: string) {
@@ -65,6 +75,13 @@ export class PortfolioController {
     ) {
         const userId = req.user.sub;
         return this.portfolioService.update(id, dto, userId);
+    }
+
+    @Post(":id/sync")
+    @UseGuards(JwtGuard)
+    async sync(@Req() req: AuthUserRequest, @Param("id") id: string) {
+        const userId = req.user.sub;
+        return this.portfolioService.sync(id, userId);
     }
 
     @Sse(":id/events")

@@ -2,13 +2,31 @@ import { Injectable } from "@nestjs/common";
 import { PortfolioRepository } from "./portfolio.repository";
 import { CreatePortfolioDto, UpdatePortfolioDto } from "./dto";
 import { PortfolioSyncService } from "@/portfolio/portfolio-sync/portfolio-sync.service";
+import { TransactionRepository } from "@/transaction/transaction.repository";
 
 @Injectable()
 export class PortfolioService {
     constructor(
         private readonly portfolioRepository: PortfolioRepository,
         private readonly portfolioSyncService: PortfolioSyncService,
+        private readonly transactionRepository: TransactionRepository,
     ) {
+    }
+
+    async findUserPortfolioTransactions(id: string, userId: string) {
+        return await this.transactionRepository.findAllByPortfolioId(
+            id,
+            userId,
+        );
+    }
+
+    async sync(id: string, userId: string) {
+        const portoflio = await this.portfolioRepository.findOneByUserId(
+            id,
+            userId,
+        );
+
+        return this.portfolioSyncService.enqueueSyncJob(portoflio);
     }
 
     async findAll() {

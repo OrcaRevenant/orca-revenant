@@ -33,4 +33,26 @@ export class TransactionRepository {
         }
         return true;
     }
+
+    async findAllByPortfolioId(
+        portfolioId: string,
+        userId: string,
+    ): Promise<Transaction[]> {
+        const client = this.supabaseService.getClient();
+
+        const { data, error } = await client
+            .from(this.table)
+            .select(`
+                *,
+                portfolio!inner(user_id)
+            `)
+            .eq("portfolio_id", portfolioId)
+            .eq("portfolio.user_id", userId);
+
+        if (error) {
+            throw new Error(`Error retrieving transactions: ${error.message}`);
+        }
+
+        return data;
+    }
 }
