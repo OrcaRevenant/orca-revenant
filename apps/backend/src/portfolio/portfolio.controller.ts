@@ -7,6 +7,7 @@ import {
     Param,
     Patch,
     Post,
+    Query,
     Req,
     Sse,
     UseGuards,
@@ -19,6 +20,7 @@ import { filter, map, Observable } from "rxjs";
 import { PortfolioEventService } from "./portfolio-event.service";
 import { PortfolioStatusUpdate } from "./portfolio.types";
 import { UniqueIdentifier } from "@/connection/connection.abstract";
+import { PageOptionsDto } from "@/pagination/dto";
 
 @Controller("portfolios")
 export class PortfolioController {
@@ -47,9 +49,14 @@ export class PortfolioController {
     async findPortfolioTransactions(
         @Req() req: AuthUserRequest,
         @Param("id") id: string,
+        @Query() pageOptionsDto: PageOptionsDto,
     ) {
         const userId = req.user.sub;
-        return this.portfolioService.findUserPortfolioTransactions(id, userId);
+        return this.portfolioService.findUserPortfolioTransactions(
+            id,
+            userId,
+            pageOptionsDto,
+        );
     }
 
     @Delete(":id")

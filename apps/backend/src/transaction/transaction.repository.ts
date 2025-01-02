@@ -1,6 +1,7 @@
 import { SupabaseService } from "@/common/supabase/supabase.service";
 import { Injectable } from "@nestjs/common";
 import { CreateTransaction, Transaction } from "./transaction.types";
+import { PageDto, PageMetaDto, PageOptionsDto } from "@/pagination/dto";
 
 @Injectable()
 export class TransactionRepository {
@@ -37,22 +38,34 @@ export class TransactionRepository {
     async findAllByPortfolioId(
         portfolioId: string,
         userId: string,
-    ): Promise<Transaction[]> {
+        pageOptionsDto: PageOptionsDto,
+    ): Promise<PageDto<Transaction>> {
         const client = this.supabaseService.getClient();
 
-        const { data, error } = await client
+        const { limit, skip } = pageOptionsDto;
+
+        const { data, count, error } = await client
             .from(this.table)
-            .select(`
+            .select(
+                `
                 *,
                 portfolio!inner(user_id)
-            `)
+            `,
+                { count: "exact" },
+            )
             .eq("portfolio_id", portfolioId)
-            .eq("portfolio.user_id", userId);
+            .eq("portfolio.user_id", userId)
+            .range(skip, skip + limit - 1);
 
         if (error) {
             throw new Error(`Error retrieving transactions: ${error.message}`);
         }
 
-        return data;
+        const pageMetaDto = new PageMetaDto({
+            itemCount: count,
+            pageOptionsDto,
+        });
+
+        return new PageDto<Transaction>(data, pageMetaDto);
     }
 }

@@ -3,6 +3,7 @@ import { PortfolioRepository } from "./portfolio.repository";
 import { CreatePortfolioDto, UpdatePortfolioDto } from "./dto";
 import { PortfolioSyncService } from "@/portfolio/portfolio-sync/portfolio-sync.service";
 import { TransactionRepository } from "@/transaction/transaction.repository";
+import { PageOptionsDto } from "@/pagination/dto";
 
 @Injectable()
 export class PortfolioService {
@@ -13,10 +14,15 @@ export class PortfolioService {
     ) {
     }
 
-    async findUserPortfolioTransactions(id: string, userId: string) {
+    async findUserPortfolioTransactions(
+        id: string,
+        userId: string,
+        pageOptionsDto: PageOptionsDto,
+    ) {
         return await this.transactionRepository.findAllByPortfolioId(
             id,
             userId,
+            pageOptionsDto,
         );
     }
 
