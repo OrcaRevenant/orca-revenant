@@ -1,7 +1,14 @@
 import { SupabaseService } from "@/common/supabase/supabase.service";
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
-import { CreatePortfolio, Portfolio, UpdatePortfolio } from "./portfolio.types";
+import {
+    CreatePortfolio,
+    CreatePortfolioAsset,
+    Portfolio,
+    PortfolioAsset,
+    UpdatePortfolio,
+} from "./portfolio.types";
 import { UniqueIdentifier } from "@/connection/connection.abstract";
+import { PageDto, PageMetaDto, PageOptionsDto } from "@/pagination/dto";
 
 @Injectable()
 export class PortfolioRepository {
@@ -146,6 +153,77 @@ export class PortfolioRepository {
 
         if (error) {
             throw new Error(error.message);
+        }
+
+        return data;
+    }
+
+    async createManyPortfolioAssets(
+        assets: CreatePortfolioAsset[],
+    ) {
+        const client = this.supabaseService.getClient();
+
+        const { error } = await client
+            .from("portfolio_assets")
+            .upsert(assets, { onConflict: `asset, portfolio_id` });
+
+        if (error) {
+            throw new Error(`Error creating record: ${error.message}`);
+        }
+
+        return true;
+    }
+
+    async findPortfolioAssets(
+        portfolioId: string,
+        userId: string,
+        pageOptionsDto: PageOptionsDto,
+    ) {
+        const client = this.supabaseService.getClient();
+
+        const { limit, skip } = pageOptionsDto;
+
+        const { data, count, error } = await client
+            .from("portfolio_assets")
+            .select(`*, portfolio!inner(user_id), asset(symbol, name, logo)`, {
+                count: "exact",
+            })
+            .eq("portfolio_id", portfolioId)
+            .eq("portfolio.user_id", userId)
+            .range(skip, skip + limit - 1);
+
+        if (error) {
+            throw new Error(
+                `Error retrieving portfolio assets: ${error.message}`,
+            );
+        }
+
+        const pageMetaDto = new PageMetaDto({
+            itemCount: count,
+            pageOptionsDto,
+        });
+
+        return new PageDto<PortfolioAsset>(data, pageMetaDto);
+    }
+
+    async findAllPortfolioAssets(
+        portfolioId: string,
+        userId: string,
+    ) {
+        const client = this.supabaseService.getClient();
+
+        const { data, error } = await client
+            .from("portfolio_assets")
+            .select(
+                `*, portfolio!inner(user_id), asset(symbol, name, logo)`,
+            )
+            .eq("portfolio_id", portfolioId)
+            .eq("portfolio.user_id", userId);
+
+        if (error) {
+            throw new Error(
+                `Error retrieving portfolio assets: ${error.message}`,
+            );
         }
 
         return data;

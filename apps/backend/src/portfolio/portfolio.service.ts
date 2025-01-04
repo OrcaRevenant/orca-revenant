@@ -14,12 +14,83 @@ export class PortfolioService {
     ) {
     }
 
+    async calculatePortfolioBalance(
+        portfolioId: string,
+        userId: string,
+    ) {
+        const assets = await this.portfolioRepository.findAllPortfolioAssets(
+            portfolioId,
+            userId,
+        );
+
+        if (!assets) {
+            throw new Error(
+                `No assets found for portfolio with ID ${portfolioId}`,
+            );
+        }
+
+        // TODO: instead of adding with 0 it should multiply with price of that asset
+        const balance = assets.reduce((sum) => {
+            return sum + 0;
+        }, 0);
+
+        return {
+            balance,
+        };
+    }
+
+    async calculateAssetAllocation(
+        portfolioId: string,
+        userId: string,
+    ) {
+        const assets = await this.portfolioRepository.findAllPortfolioAssets(
+            portfolioId,
+            userId,
+        );
+
+        if (!assets) {
+            throw new Error(
+                `No assets found for portfolio with ID ${portfolioId}`,
+            );
+        }
+
+        const totalValue = assets.reduce((sum, asset) => {
+            return sum + asset.amount;
+        }, 0);
+
+        if (totalValue === 0) {
+            throw new Error(`Total portfolio value is zero.`);
+        }
+
+        const allocation = assets.map((asset) => {
+            const percentage = (asset.amount / totalValue) * 100;
+            return {
+                asset: asset.asset,
+                percentage: parseFloat(percentage.toFixed(2)),
+            };
+        });
+
+        return allocation;
+    }
+
+    async findUserPortfolioAssets(
+        id: string,
+        userId: string,
+        pageOptionsDto: PageOptionsDto,
+    ) {
+        return this.portfolioRepository.findPortfolioAssets(
+            id,
+            userId,
+            pageOptionsDto,
+        );
+    }
+
     async findUserPortfolioTransactions(
         id: string,
         userId: string,
         pageOptionsDto: PageOptionsDto,
     ) {
-        return await this.transactionRepository.findAllByPortfolioId(
+        return this.transactionRepository.findAllByPortfolioId(
             id,
             userId,
             pageOptionsDto,
@@ -43,11 +114,26 @@ export class PortfolioService {
         return this.portfolioRepository.findByUserId(userId);
     }
 
-    async findOneByUserId(id: string, userId: string) {
-        return this.portfolioRepository.findOneByUserId(
+    async getStatus(id: string, userId: string) {
+        const portfolio = await this.portfolioRepository.findOneByUserId(
             id,
             userId,
         );
+        return portfolio.status;
+    }
+
+    async findOneByUserId(id: string, userId: string) {
+        const port = await this.portfolioRepository.findOneByUserId(
+            id,
+            userId,
+        );
+
+        await this.portfolioSyncService.updateStatusAndSendEvent(
+            port,
+            `inactive`,
+        );
+
+        return port;
     }
 
     async create(createPortfolioDto: CreatePortfolioDto, userId: string) {

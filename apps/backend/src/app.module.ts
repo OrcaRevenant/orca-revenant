@@ -15,6 +15,7 @@ import { ConnectionModule } from "./connection/connection.module";
 import { PortfolioModule } from "./portfolio/portfolio.module";
 import { FeedbackModule } from "./feedback/feedback.module";
 import { AuthModule } from "./auth/auth.module";
+import { AssetModule } from './asset/asset.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { AuthModule } from "./auth/auth.module";
     FeedbackModule,
     ConnectionModule,
     PortfolioModule,
+    AssetModule,
   ],
   controllers: [AppController],
   providers: [AppService, {

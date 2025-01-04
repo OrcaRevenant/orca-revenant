@@ -47,10 +47,7 @@ export class TransactionRepository {
         const { data, count, error } = await client
             .from(this.table)
             .select(
-                `
-                *,
-                portfolio!inner(user_id)
-            `,
+                `*, portfolio!inner(user_id), asset(symbol, name, logo)`,
                 { count: "exact" },
             )
             .eq("portfolio_id", portfolioId)

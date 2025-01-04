@@ -11,6 +11,6 @@ export class PortfolioSyncProcessor extends WorkerHost {
 
     async process(job: Job<Portfolio>) {
         const portfolio = job.data;
-        await this.portfolioSyncService.syncTransactions(portfolio);
+        await this.portfolioSyncService.sync(portfolio);
     }
 }

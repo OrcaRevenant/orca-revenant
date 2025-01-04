@@ -6,6 +6,18 @@ export class AuthService {
     constructor(private readonly supabaseService: SupabaseService) {
     }
 
+    async getProfile(token: string) {
+        const supabase = this.supabaseService.getClient();
+
+        const { data, error } = await supabase.auth.getUser(token);
+
+        if (error) {
+            throw new UnauthorizedException(error.message);
+        }
+
+        return data.user;
+    }
+
     async signUp(email: string, password: string) {
         const supabase = this.supabaseService.getClient();
         const { data, error } = await supabase.auth.signUp({ email, password });

@@ -8,6 +8,7 @@ import { BullBoardModule } from "@bull-board/nestjs";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { TransactionModule } from "@/transaction/transaction.module";
 import { PortfolioModule } from "@/portfolio/portfolio.module";
+import { AssetModule } from "@/asset/asset.module";
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { PortfolioModule } from "@/portfolio/portfolio.module";
     SupabaseModule,
     ConnectionModule,
     TransactionModule,
+    AssetModule,
     forwardRef(() => PortfolioModule),
   ],
   providers: [

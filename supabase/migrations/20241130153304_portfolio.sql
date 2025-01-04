@@ -16,12 +16,15 @@ create table public.portfolio (
     "api_key" text not null,
     "color" char(7) not null default '#000000' check (color ~ '^#[0-9A-Fa-f]{6}$'),
     "created_at" timestamp with time zone not null default now(),
-    "status" text not null default 'inactive' check (status in ('active', 'inactive', 'disabled')),
+    "disabled" boolean not null default false,
+    "status" text not null default 'unknown' check (
+        status in ('active', 'inactive', 'syncing', 'unknown')
+    ),
     "last_sync_at" timestamp with time zone default null
 );
 create table public.portfolio_assets (
     "portfolio_id" bigint not null references public.portfolio("id") on delete cascade,
-    "asset" text not null,
+    "asset" text not null references public.asset("symbol") on delete cascade,
     "amount" numeric not null default 0 check (amount >= 0),
     constraint portfolio_assets_pkey primary key (portfolio_id, asset)
 );

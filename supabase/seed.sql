@@ -131,24 +131,24 @@ VALUES (
 -- | |_) / _ \| '__| __| |_ / _ \| | |/ _ \ 
 -- |  __/ (_) | |  | |_|  _| (_) | | | (_) |
 -- |_|   \___/|_|   \__|_|  \___/|_|_|\___/ 
-INSERT INTO public.portfolio (
-        user_id,
-        connection_name,
-        title,
-        color,
-        api_key
-    )
-VALUES (
-        (
-            SELECT id
-            FROM auth.users
-            WHERE email = 'adam@orca.com'
-        ),
-        'nobitex',
-        'Adam Portfolio',
-        '#a11043',
-        '3099ac0863cd456d1a5977f847a4f334b6c4cc80'
-    );
+-- INSERT INTO public.portfolio (
+--         user_id,
+--         connection_name,
+--         title,
+--         color,
+--         api_key
+--     )
+-- VALUES (
+--         (
+--             SELECT id
+--             FROM auth.users
+--             WHERE email = 'adam@orca.com'
+--         ),
+--         'nobitex',
+--         'Adam Portfolio',
+--         '#a11043',
+--         '3099ac0863cd456d1a5977f847a4f334b6c4cc80'
+--     );
 --     _                 _   
 --    / \   ___ ___  ___| |_ 
 --   / _ \ / __/ __|/ _ \ __|

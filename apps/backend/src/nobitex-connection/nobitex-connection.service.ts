@@ -17,13 +17,12 @@ export class NobitexConnectionService implements ConnectionAbstract {
 
     async checkHealth(apiKey: string): Promise<Health> {
         const { status } = await this.nobitexService.getProfile(apiKey);
-        return status === `ok` ? `alive` : `dead`;
+        return status === `ok` ? `active` : `inactive`;
     }
 
     async getTransactions(apiKey: string): Promise<Transaction[]> {
         const { wallets } = await this.nobitexService.getWallets(apiKey);
 
-        // const walletIds = [22150094];
         const walletIds = Object.keys(wallets).map((v) => wallets[v].id);
 
         const userTransactionsPromises = walletIds.map((walletId) =>
@@ -51,13 +50,15 @@ export class NobitexConnectionService implements ConnectionAbstract {
     }
 
     async getAssets(apiKey: string): Promise<Asset[]> {
-        const data = await this.nobitexService.getAvailableAssets(apiKey);
+        const data = await this.nobitexService.getWallets(apiKey);
 
-        const activeCurrencyList = data.nobitex.activeCurrencies;
+        const wallets = data.wallets;
 
-        return activeCurrencyList.map((v) => {
+        return Object.keys(wallets).map((k) => {
+            const wallet = wallets[k];
             return {
-                symbol: v,
+                symbol: k.toLowerCase(),
+                balance: +wallet.balance,
             };
         });
     }

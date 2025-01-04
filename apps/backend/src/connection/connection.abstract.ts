@@ -6,11 +6,14 @@ export abstract class ConnectionAbstract {
 
 export type Asset = {
     symbol: string;
+    balance: number;
 };
 
 export type TransactionType = `buy` | `sell` | `withdrawal` | `deposit`;
 
 export type UniqueIdentifier = string | number;
+
+export type Health = `active` | `inactive`;
 
 export type Transaction = {
     id: UniqueIdentifier;
@@ -20,5 +23,3 @@ export type Transaction = {
     asset: string;
     type: TransactionType;
 };
-
-export type Health = `alive` | `dead`;

@@ -44,9 +44,63 @@ export class PortfolioController {
         return this.portfolioService.findOneByUserId(id, userId);
     }
 
+    @Get(":id/assets")
+    @UseGuards(JwtGuard)
+    async findAssets(
+        @Req() req: AuthUserRequest,
+        @Param("id") id: string,
+        @Query() pageOptionsDto: PageOptionsDto,
+    ) {
+        const userId = req.user.sub;
+        return this.portfolioService.findUserPortfolioAssets(
+            id,
+            userId,
+            pageOptionsDto,
+        );
+    }
+
+    @Get(":id/balance")
+    @UseGuards(JwtGuard)
+    async getBalance(
+        @Req() req: AuthUserRequest,
+        @Param("id") id: string,
+    ) {
+        const userId = req.user.sub;
+        return this.portfolioService.calculatePortfolioBalance(
+            id,
+            userId,
+        );
+    }
+
+    @Get(":id/status")
+    @UseGuards(JwtGuard)
+    async getStatus(
+        @Req() req: AuthUserRequest,
+        @Param("id") id: string,
+    ) {
+        const userId = req.user.sub;
+        return this.portfolioService.getStatus(
+            id,
+            userId,
+        );
+    }
+
+    @Get(":id/assets/allocation")
+    @UseGuards(JwtGuard)
+    async getAssetsAllocation(
+        @Req() req: AuthUserRequest,
+        @Param("id") id: string,
+    ) {
+        const userId = req.user.sub;
+        return this.portfolioService.calculateAssetAllocation(
+            id,
+            userId,
+        );
+    }
+
     @Get(":id/transactions")
     @UseGuards(JwtGuard)
-    async findPortfolioTransactions(
+    async findTransactions(
         @Req() req: AuthUserRequest,
         @Param("id") id: string,
         @Query() pageOptionsDto: PageOptionsDto,

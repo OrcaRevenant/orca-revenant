@@ -115,6 +115,7 @@ export type Database = {
           color: string
           connection_name: string
           created_at: string
+          disabled: boolean
           id: number
           last_sync_at: string | null
           status: string
@@ -126,6 +127,7 @@ export type Database = {
           color?: string
           connection_name: string
           created_at?: string
+          disabled?: boolean
           id?: number
           last_sync_at?: string | null
           status?: string
@@ -137,6 +139,7 @@ export type Database = {
           color?: string
           connection_name?: string
           created_at?: string
+          disabled?: boolean
           id?: number
           last_sync_at?: string | null
           status?: string
@@ -170,6 +173,13 @@ export type Database = {
           portfolio_id?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "portfolio_assets_asset_fkey"
+            columns: ["asset"]
+            isOneToOne: false
+            referencedRelation: "asset"
+            referencedColumns: ["symbol"]
+          },
           {
             foreignKeyName: "portfolio_assets_portfolio_id_fkey"
             columns: ["portfolio_id"]
@@ -237,6 +247,13 @@ export type Database = {
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "transaction_asset_fkey"
+            columns: ["asset"]
+            isOneToOne: false
+            referencedRelation: "asset"
+            referencedColumns: ["symbol"]
+          },
           {
             foreignKeyName: "transaction_portfolio_id_fkey"
             columns: ["portfolio_id"]
