@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { PriceAbstract } from "../price.abstract";
+import { HistoricalPrice, PriceAbstract } from "../price.abstract";
 import { MOCK_ASSET_PRICES } from "./mock.constant";
 
 @Injectable()
@@ -10,7 +10,50 @@ export class MockService implements PriceAbstract {
         precision: 4,
     };
 
-    async getAssetPriceAtTime(
+    async getAssetPrice(asset: string, timestamp: Date): Promise<number> {
+        return this.getAssetPriceAtTime(asset, timestamp);
+    }
+
+    async getAssetHistoricalPrice(
+        asset: string,
+        from: Date,
+        to: Date,
+        resolution: number,
+    ): Promise<HistoricalPrice[]> {
+        const prices: HistoricalPrice[] = [];
+
+        let currentTime = new Date(from).getTime();
+        const toTime = new Date(to).getTime();
+
+        while (currentTime <= toTime) {
+            const price = await this.getAssetPriceAtTime(
+                asset,
+                new Date(currentTime),
+            );
+            prices.push({
+                time: new Date(currentTime).toISOString(),
+                price,
+                asset,
+            });
+            currentTime += resolution * 60 * 1000;
+        }
+
+        return prices;
+    }
+
+    async getCurrentAssetPrices(
+        assets: string[],
+    ): Promise<Record<string, number>> {
+        const prices: Record<string, number> = {};
+
+        for (const asset of assets) {
+            prices[asset] = await this.getCurrentAssetPrice(asset);
+        }
+
+        return prices;
+    }
+
+    private async getAssetPriceAtTime(
         asset: string,
         time: Date,
     ): Promise<number> {
@@ -27,7 +70,7 @@ export class MockService implements PriceAbstract {
         return Promise.resolve(this.roundToPrecision(price, precision));
     }
 
-    async getCurrentAssetPrice(asset: string): Promise<number> {
+    private async getCurrentAssetPrice(asset: string): Promise<number> {
         const assetData = MOCK_ASSET_PRICES[asset.toLowerCase()] ||
             this.defaultPrice;
 
@@ -36,31 +79,6 @@ export class MockService implements PriceAbstract {
 
         const price = basePrice * (1 + fluctuationFactor);
         return Promise.resolve(this.roundToPrecision(price, precision));
-    }
-
-    async getAssetsPriceAtTime(
-        assets: string[],
-        time: Date,
-    ): Promise<Record<string, number>> {
-        const prices: Record<string, number> = {};
-
-        for (const asset of assets) {
-            prices[asset] = await this.getAssetPriceAtTime(asset, time);
-        }
-
-        return prices;
-    }
-
-    async getCurrentAssetsPrice(
-        assets: string[],
-    ): Promise<Record<string, number>> {
-        const prices: Record<string, number> = {};
-
-        for (const asset of assets) {
-            prices[asset] = await this.getCurrentAssetPrice(asset);
-        }
-
-        return prices;
     }
 
     private generateFluctuation(timestamp: number, range: number): number {

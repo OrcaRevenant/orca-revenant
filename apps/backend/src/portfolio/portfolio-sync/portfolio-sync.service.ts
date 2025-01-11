@@ -8,7 +8,6 @@ import { TransactionRepository } from "@/transaction/transaction.repository";
 import { generateTransactionHash } from "@/transaction/transaction.utils";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable, OnModuleInit } from "@nestjs/common";
-import { isAxiosError } from "axios";
 import { Queue } from "bullmq";
 
 @Injectable()
@@ -49,10 +48,7 @@ export class PortfolioSyncService implements OnModuleInit {
 
             await this.updateStatusAndSendEvent(portfolio, `active`);
         } catch (error) {
-            if (isAxiosError(error)) {
-                await this.updateStatusAndSendEvent(portfolio, `inactive`);
-            }
-
+            await this.updateStatusAndSendEvent(portfolio, `inactive`);
             console.error("Error syncing portfolio:", error.message);
         }
     }
@@ -148,8 +144,10 @@ export class PortfolioSyncService implements OnModuleInit {
     }
 
     private async syncInitialPortfolios(syncThresholdMinutes: number = 5) {
+        // const portfolios = await this.portfolioRepository
+        //     .findUnsyncedPortfolios(syncThresholdMinutes);
         const portfolios = await this.portfolioRepository
-            .findUnsyncedPortfolios(syncThresholdMinutes);
+            .findAll();
 
         await Promise.all(
             portfolios.map(async (portfolio) => {

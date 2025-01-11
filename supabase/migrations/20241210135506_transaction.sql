@@ -5,6 +5,7 @@ create table public.transaction (
     "asset" text not null references public.asset("symbol") on delete cascade,
     "fee" numeric null default 0 check (fee >= 0),
     "amount" numeric null default 0 check (amount >= 0),
+    "value" numeric null default 0 check (amount >= 0),
     "time" timestamp with time zone,
     "type" text not null check (type in ('buy', 'sell', 'withdrawal', 'deposit')),
     constraint transaction_pkey primary key (id)

@@ -1,236 +1,122 @@
-import { Inject, Injectable } from "@nestjs/common";
-import { SupabaseService } from "@/common/supabase/supabase.service";
-import { PriceAbstract } from "./price.abstract";
-import { Database } from "@orca/types";
 import dayjs from "dayjs";
 import priceConfig from "./price.config";
+import { PriceAbstract } from "./price.abstract";
 import { ConfigType } from "@nestjs/config";
+import { BackfillService } from "./backfill/backfill.service";
+import { PriceRepository } from "./price.repository";
+import { AssetRepository } from "@/asset/asset.repository";
+import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 
-// TODO: Handle concurrency for PriceService
-// Ensure that only one process at a time fills price gaps or updates prices for a specific asset.
-// Implement a locking mechanism to prevent redundant or conflicting operations.
-// Options:
-// 1. Use database-level locks (e.g., advisory locks in PostgreSQL).
-// 2. Use distributed locks (e.g., with Redis).
-// 3. Implement a state flag or status field to manage concurrency within the system.
-// This will help avoid race conditions and redundant data writes.
 @Injectable()
-export class PriceService {
+export class PriceService implements OnModuleInit {
+    private readonly currentDate = dayjs();
     constructor(
         @Inject(priceConfig.KEY) private readonly config: ConfigType<
             typeof priceConfig
         >,
         @Inject("PriceProvider") private readonly priceProvider: PriceAbstract,
-        private readonly supabaseService: SupabaseService,
+        private readonly backfillService: BackfillService,
+        private readonly priceRepository: PriceRepository,
+        private readonly assetRepository: AssetRepository,
     ) {
-        this.backfillAndUpdateCurrentPrices();
     }
 
-    @Cron("0 * * * * *")
-    async updateCurrentPrices() {
-        const assets = await this.getAssets();
+    // @Cron("0/2 * * * *")
+    // async scheduleCurrentUpdate() {
+    //     await this.updateAssetsPrice();
+    // }
 
-        for (const asset of assets) {
-            await this.updateCurrentPrice(asset.symbol);
-        }
-        console.log("Finished updating current prices.");
+    async onModuleInit() {
+        console.log(`Cleaning db`);
+        await this.priceRepository.clean();
+        console.log(`Cleaned`);
+
+        await this.performeBackfill();
+        // await this.scheduleCurrentUpdate();
     }
 
-    async backfillAndUpdateCurrentPrices() {
-        console.log("Starting backfill process...");
-        const assets = await this.getAssets();
+    private async updateAssetsPrice() {
+        const symbols = await this.getAssetSymbols();
 
-        for (const asset of assets) {
-            const backfillComplete = await this.performBackfill(asset.symbol);
-
-            if (backfillComplete) {
-                console.log(
-                    `Backfill completed for asset: ${asset.symbol}. Switching to current price updates.`,
-                );
-                await this.updateCurrentPrice(asset.symbol);
-            }
-        }
-        console.log(
-            "Backfill process completed. Switching to scheduled updates.",
+        const currentUpdateDate = dayjs().startOf("minute").toDate();
+        const currentPrices = await this.priceProvider.getCurrentAssetPrices(
+            symbols,
         );
+
+        const records = Object.keys(currentPrices).map((v) => ({
+            asset: v,
+            price: currentPrices[v],
+            time: currentUpdateDate.toISOString(),
+        }));
+
+        await this.priceRepository.insertMany(records);
     }
 
-    private async performBackfill(assetSymbol: string): Promise<boolean> {
-        const currentTimestamp = dayjs();
+    async performeBackfill() {
+        // const symbols = await this.getAssetSymbols();
 
-        const startTrackingFromDate = await this.determineStartTrackingDate(
-            assetSymbol,
-            currentTimestamp,
+        const endTrackingDate = this.currentDate.subtract(2, "minutes").startOf(
+            "minute",
         );
 
-        const oldestTransactionDate = await this.getOldestTransactionDate(
-            assetSymbol,
-        );
-
-        if (
-            oldestTransactionDate &&
-            dayjs(oldestTransactionDate).isBefore(startTrackingFromDate)
-        ) {
-            console.log(
-                `Filling older transactions for asset: ${assetSymbol}`,
-                `Start: ${oldestTransactionDate.toISOString()}`,
-                `End: ${startTrackingFromDate.toISOString()}`,
+        const startTrackingFromDate = await this
+            .determineStartTrackingDate(
+                `btc`,
+                this.currentDate,
             );
 
-            const timestamps = this.generateTimestamps(
-                dayjs(oldestTransactionDate),
-                startTrackingFromDate,
-            );
-
-            await this.fillPriceGaps(assetSymbol, timestamps);
-        }
-
-        console.log(
-            `Backfilling data for asset: ${assetSymbol}`,
-            `Start: ${startTrackingFromDate.toISOString()}`,
-            `End: ${currentTimestamp.toISOString()}`,
+        await this.backfillService.addBackfillJob(
+            `btc`,
+            startTrackingFromDate.toDate(),
+            endTrackingDate.toDate(),
+            2,
         );
 
-        const timestamps = this.generateTimestamps(
-            startTrackingFromDate,
-            currentTimestamp,
-        );
+        // await Promise.all(
+        //     symbols.map(async (symbol) => {
+        //         const startTrackingFromDate = await this
+        //             .determineStartTrackingDate(
+        //                 symbol,
+        //                 this.currentDate,
+        //             );
 
-        if (timestamps.length === 0) {
-            console.log(`No gaps to fill for asset: ${assetSymbol}`);
-            return true;
-        }
+        //         console.log(
+        //             `Backfilling for ${symbol} from ${startTrackingFromDate.toISOString()} to ${endTrackingDate.toISOString()}`,
+        //         );
 
-        await this.fillPriceGaps(assetSymbol, timestamps);
-        return true;
+        //         await this.backfillService.addBackfillJob(
+        //             symbol,
+        //             startTrackingFromDate.toDate(),
+        //             endTrackingDate.toDate(),
+        //             2,
+        //         );
+        //     }),
+        // );
     }
 
-    private async updateCurrentPrice(assetSymbol: string) {
-        const currentPrice = await this.priceProvider.getAssetPriceAtTime(
-            assetSymbol,
-            new Date(),
-        );
-        const prices: Database[`public`][`Tables`][`price`][`Insert`][] = [
-            {
-                asset: assetSymbol,
-                price: currentPrice,
-                time: new Date().toISOString(),
-            },
-        ];
-
-        console.log(
-            `Updating current price for asset: ${assetSymbol}`,
-        );
-
-        await this.savePrice(prices);
-    }
-
-    private async fillPriceGaps(asset: string, timestamps: string[]) {
-        const prices: Database[`public`][`Tables`][`price`][`Insert`][] = [];
-
-        for (const time of timestamps) {
-            const price = await this.priceProvider.getAssetPriceAtTime(
-                asset,
-                new Date(time),
-            );
-            prices.push({ asset, price, time });
-        }
-
-        await this.savePrice(prices);
-    }
-
-    private async getAssets() {
-        const { data, error } = await this.supabaseService
-            .getClient()
-            .from("asset")
-            .select("*");
-
-        if (error) {
-            console.error("Error fetching assets:", error);
-            return [];
-        }
-
-        return data;
-    }
-
-    private async getLastPriceTime(asset: string): Promise<Date | null> {
-        const { data, error } = await this.supabaseService
-            .getClient()
-            .from("price")
-            .select("time")
-            .eq("asset", asset)
-            .order("time", { ascending: false })
-            .limit(1)
-            .single();
-
-        if (error || !data) {
-            return null;
-        }
-
-        return new Date(data.time);
-    }
-
-    private async getOldestTransactionDate(
-        asset: string,
-    ): Promise<Date | null> {
-        const { data, error } = await this.supabaseService
-            .getClient()
-            .from("transaction")
-            .select("time")
-            .eq("asset", asset)
-            .order("time", { ascending: true })
-            .limit(1)
-            .single();
-
-        if (error || !data) {
-            return null;
-        }
-
-        return new Date(data.time);
-    }
-
-    private async savePrice(
-        prices: Database[`public`][`Tables`][`price`][`Insert`][],
-    ) {
-        await this.supabaseService.getClient().from("price").insert(prices);
+    private async getAssetSymbols() {
+        const assets = await this.assetRepository.findAll();
+        return assets.map((v) => v.symbol);
     }
 
     private async determineStartTrackingDate(
-        assetSymbol: string,
+        asset: string,
         currentTimestamp: dayjs.Dayjs,
     ): Promise<dayjs.Dayjs> {
-        const lastPriceTime = await this.getLastPriceTime(assetSymbol);
+        // const lastPriceTime = await this.priceRepository.getLastPriceTime(
+        //     asset,
+        // );
 
-        if (!lastPriceTime) {
-            return currentTimestamp.subtract(10, "minutes");
-        }
+        return currentTimestamp.subtract(100, "year").startOf("minutes");
 
-        const lastPriceDate = dayjs(lastPriceTime);
-        return lastPriceDate.isAfter(currentTimestamp)
-            ? currentTimestamp
-            : lastPriceDate;
-    }
+        // if (!lastPriceTime) {
+        //     return currentTimestamp.subtract(1, "year").startOf("minutes");
+        // }
 
-    private generateTimestamps(
-        start: dayjs.Dayjs,
-        end: dayjs.Dayjs,
-    ): string[] {
-        if (start.isAfter(end)) {
-            console.warn(
-                "Start date is after end date. Adjusting start to match end.",
-            );
-            return [];
-        }
-
-        const timestamps: string[] = [];
-        let current = start;
-
-        while (current.isBefore(end)) {
-            timestamps.push(current.toISOString());
-            current = current.add(this.config.interval, "minutes");
-        }
-
-        return timestamps;
+        // const lastPriceDate = dayjs(lastPriceTime);
+        // return lastPriceDate.isAfter(currentTimestamp)
+        //     ? currentTimestamp
+        //     : lastPriceDate;
     }
 }

@@ -11,11 +11,13 @@ import { ExceptionModule } from "./common/exception/exception.module";
 import { BullBoardModule } from "@bull-board/nestjs";
 import { ExpressAdapter } from "@bull-board/express";
 import { BullModule } from "@nestjs/bullmq";
-import { ConnectionModule } from "./connection/connection.module";
-import { PortfolioModule } from "./portfolio/portfolio.module";
-import { FeedbackModule } from "./feedback/feedback.module";
 import { AuthModule } from "./auth/auth.module";
-import { AssetModule } from './asset/asset.module';
+import { AssetModule } from "./asset/asset.module";
+import { PriceModule } from "./price/price.module";
+
+// import { ConnectionModule } from "./connection/connection.module";
+// import { PortfolioModule } from "./portfolio/portfolio.module";
+// import { FeedbackModule } from "./feedback/feedback.module";
 
 @Module({
   imports: [
@@ -41,10 +43,11 @@ import { AssetModule } from './asset/asset.module';
     }),
     ScheduleModule.forRoot(),
     AuthModule,
-    FeedbackModule,
-    ConnectionModule,
-    PortfolioModule,
     AssetModule,
+    PriceModule,
+    // FeedbackModule,
+    // ConnectionModule,
+    // PortfolioModule,
   ],
   controllers: [AppController],
   providers: [AppService, {

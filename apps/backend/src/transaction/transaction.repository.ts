@@ -9,25 +9,12 @@ export class TransactionRepository {
 
     constructor(private readonly supabaseService: SupabaseService) {}
 
-    async create(payload: CreateTransaction): Promise<Transaction> {
+    async createMany(transactions: CreateTransaction[]): Promise<boolean> {
         const client = this.supabaseService.getClient();
-        const { data, error } = await client.from(this.table).insert(
-            payload,
-        )
-            .select(`*`).single();
 
-        if (error) {
-            throw new Error(`Error creating record: ${error.message}`);
-        }
-        return data;
-    }
-
-    async createMany(payload: CreateTransaction[]): Promise<boolean> {
-        const client = this.supabaseService.getClient();
-        const { error } = await client.from(this.table).upsert(
-            payload,
-            { onConflict: `hash` },
-        );
+        const { error } = await client.rpc("insert_transactions_with_values", {
+            transactions,
+        });
 
         if (error) {
             throw new Error(`Error creating record: ${error.message}`);

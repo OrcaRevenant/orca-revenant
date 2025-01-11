@@ -1,16 +1,20 @@
+export type Resolution = string | number;
+export type HistoricalPrice = { time: string; price: number; asset: string };
+
 export abstract class PriceAbstract {
-    abstract getAssetPriceAtTime(
+    abstract getAssetPrice(
         asset: string,
-        time: Date,
+        timestamp: Date,
     ): Promise<number>;
-    abstract getCurrentAssetPrice(asset: string): Promise<number>;
 
-    abstract getAssetsPriceAtTime(
-        assets: string[],
-        time: Date,
-    ): Promise<Record<string, number>>;
+    abstract getAssetHistoricalPrice(
+        asset: string,
+        from: Date,
+        to: Date,
+        resolution: Resolution,
+    ): Promise<HistoricalPrice[]>;
 
-    abstract getCurrentAssetsPrice(
+    abstract getCurrentAssetPrices(
         assets: string[],
     ): Promise<Record<string, number>>;
 }

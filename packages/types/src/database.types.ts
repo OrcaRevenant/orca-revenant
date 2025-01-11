@@ -225,6 +225,7 @@ export type Database = {
           portfolio_id: number
           time: string | null
           type: string
+          value: number | null
         }
         Insert: {
           amount?: number | null
@@ -235,6 +236,7 @@ export type Database = {
           portfolio_id: number
           time?: string | null
           type: string
+          value?: number | null
         }
         Update: {
           amount?: number | null
@@ -245,6 +247,7 @@ export type Database = {
           portfolio_id?: number
           time?: string | null
           type?: string
+          value?: number | null
         }
         Relationships: [
           {
@@ -268,7 +271,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      insert_transactions_with_values: {
+        Args: {
+          transactions: Json
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
