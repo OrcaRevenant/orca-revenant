@@ -1,175 +1,187 @@
-import { SupabaseService } from "@/common/supabase/supabase.service";
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
-import {
-    CreatePortfolio,
-    CreatePortfolioAsset,
-    Portfolio,
-    PortfolioAsset,
-    UpdatePortfolio,
-} from "./portfolio.types";
 import { UniqueIdentifier } from "@/connection/connection.abstract";
 import { PageDto, PageMetaDto, PageOptionsDto } from "@/pagination/dto";
+import { Portfolio, PortfolioAsset } from "./portfolio.types";
+import { DatabaseService } from "@/database/database.service";
 
 @Injectable()
 export class PortfolioRepository {
     private readonly table = "portfolio";
 
-    constructor(private readonly supabaseService: SupabaseService) {}
+    constructor(private readonly db: DatabaseService) {}
 
-    async create(payload: CreatePortfolio): Promise<Portfolio> {
-        const client = this.supabaseService.getClient();
-        const { data, error } = await client.from(this.table).insert(
-            payload,
-        )
-            .select(`*`).single();
+    private serialize(portfolio: any): Portfolio {
+        return {
+            api_key: portfolio.api_key,
+            connection_name: portfolio.connection_name,
+            created_at: portfolio.created_at,
+            disabled: !!portfolio.disabled,
+            id: `${portfolio.id}`,
+            last_sync_at: portfolio.last_sync_at,
+            title: portfolio.title,
+            user_id: `${portfolio.user_id}`,
+            color: `${portfolio.color}`,
+            status: portfolio.status,
+        };
+    }
 
-        if (error) {
-            throw new Error(`Error creating record: ${error.message}`);
+    private serializeAssets(portfolioAsset: any): PortfolioAsset {
+        return {
+            amount: portfolioAsset.amount,
+            asset: portfolioAsset.asset,
+            portfolio_id: portfolioAsset.portfolio_id,
+        };
+    }
+
+    async create(payload: Partial<Portfolio>): Promise<Portfolio> {
+        const result = await this.db.query
+            .insertInto(this.table)
+            .values(payload)
+            .returningAll()
+            .executeTakeFirst();
+
+        if (!result) {
+            throw new Error("Error creating portfolio");
         }
-        return data;
+        return this.serialize(result);
     }
 
     async update(
         id: UniqueIdentifier,
-        payload: UpdatePortfolio,
+        payload: Partial<Portfolio>,
     ): Promise<Portfolio> {
-        const client = this.supabaseService.getClient();
-        const { data, error } = await client.from(this.table).update(payload)
-            .eq("user_id", payload.user_id)
-            .eq("id", id).select(`*`).single();
+        const result = await this.db.query
+            .updateTable(this.table)
+            .set(payload)
+            .where("id", "=", `${id}`)
+            .where("user_id", "=", payload.user_id)
+            .returningAll()
+            .executeTakeFirst();
 
-        if (error) {
-            throw new Error(error.message);
+        if (!result) {
+            throw new Error("Error updating portfolio");
         }
-        return data;
+
+        return this.serialize(result);
     }
 
     async delete(
         id: UniqueIdentifier,
         userId: UniqueIdentifier,
     ): Promise<boolean> {
-        const client = this.supabaseService.getClient();
-        const { data, error } = await client.from(this.table).delete().eq(
-            "user_id",
-            userId,
-        ).eq(
-            "id",
-            id,
-        ).select().single();
+        const result = await this.db.query
+            .deleteFrom(this.table)
+            .where("id", "=", `${id}`)
+            .where("user_id", "=", `${userId}`)
+            .returning("id")
+            .executeTakeFirst();
 
-        if (!data) {
+        if (!result) {
             throw new HttpException("Not found", HttpStatus.NOT_FOUND);
         }
-
-        if (error) {
-            throw new Error(error.message);
-        }
-
         return true;
     }
 
     async findByUserId(userId: UniqueIdentifier): Promise<Portfolio[]> {
-        const client = this.supabaseService.getClient();
-        const { data, error } = await client.from(this.table).select("*").eq(
-            "user_id",
-            userId,
-        );
-        if (error) {
-            throw new Error(error.message);
-        }
-        return data;
+        const results = await this.db.query
+            .selectFrom(this.table)
+            .selectAll()
+            .where("user_id", "=", `${userId}`)
+            .execute();
+
+        return results.map(this.serialize);
     }
 
     async findAll(): Promise<Portfolio[]> {
-        const client = this.supabaseService.getClient();
-        const { data, error } = await client.from(this.table).select("*");
-        if (error) {
-            throw new Error(error.message);
-        }
-        return data;
+        const results = await this.db.query
+            .selectFrom(this.table)
+            .selectAll()
+            .execute();
+
+        return results.map(this.serialize);
     }
 
     async findOneByUserId(
         id: UniqueIdentifier,
         userId: UniqueIdentifier,
     ): Promise<Portfolio> {
-        const client = this.supabaseService.getClient();
-        const { data, error } = await client.from(this.table).select("*").eq(
-            "user_id",
-            userId,
-        ).eq("id", id).single();
+        const result = await this.db.query
+            .selectFrom(this.table)
+            .selectAll()
+            .where("id", "=", `${id}`)
+            .where("user_id", "=", `${userId}`)
+            .executeTakeFirst();
 
-        if (error) {
-            throw new Error(error.message);
+        if (!result) {
+            throw new Error("Portfolio not found");
         }
-        return data;
+        return this.serialize(result);
     }
 
     async updateStatus(
         portfolio: Portfolio,
-        status: Portfolio[`status`],
+        status: Portfolio["status"],
     ): Promise<Portfolio> {
-        const { data, error } = await this.supabaseService.getClient()
-            .from("portfolio")
-            .update({
+        const result = await this.db.query
+            .updateTable(this.table)
+            .set({
                 status,
                 last_sync_at: new Date().toISOString(),
             })
-            .eq("id", portfolio.id).eq("user_id", portfolio.user_id).select(`*`)
-            .single();
+            .where("id", "=", portfolio.id)
+            .where("user_id", "=", portfolio.user_id)
+            .returningAll()
+            .executeTakeFirst();
 
-        if (error) {
-            throw new Error(error.message);
+        if (!result) {
+            throw new Error("Error updating portfolio status");
         }
-
-        return data;
+        return this.serialize(result);
     }
 
     async isPortfolioOwner(
         portfolioId: UniqueIdentifier,
         userId: UniqueIdentifier,
     ): Promise<boolean> {
-        const { data, error } = await this.supabaseService.getClient()
-            .from("portfolio")
-            .select("id, user_id")
-            .eq("id", portfolioId)
-            .single();
+        const result = await this.db.query
+            .selectFrom(this.table)
+            .select(["id", "user_id"])
+            .where("id", "=", `${portfolioId}`)
+            .executeTakeFirst();
 
-        if (error || !data) {
-            return false;
-        }
-
-        return data.user_id === userId;
+        return result?.user_id === userId || false;
     }
 
-    async findUnsyncedPortfolios(minutes: number) {
-        const fiveMinutesAgo = new Date(Date.now() - minutes * 60 * 1000)
+    async findUnsyncedPortfolios(minutes: number): Promise<Portfolio[]> {
+        const thresholdTime = new Date(Date.now() - minutes * 60 * 1000)
             .toISOString();
 
-        const { data, error } = await this.supabaseService.getClient()
-            .from("portfolio")
-            .select("*")
-            .or(`last_sync_at.is.null,last_sync_at.lt.${fiveMinutesAgo}`);
+        const results = await this.db.query
+            .selectFrom(this.table)
+            .selectAll()
+            .where((qb) =>
+                qb.or([
+                    qb("last_sync_at", "is", null),
+                    qb("last_sync_at", "<", thresholdTime as any),
+                ])
+            )
+            .execute();
 
-        if (error) {
-            throw new Error(error.message);
-        }
-
-        return data;
+        return results.map(this.serialize);
     }
 
     async createManyPortfolioAssets(
-        assets: CreatePortfolioAsset[],
-    ) {
-        const client = this.supabaseService.getClient();
-
-        const { error } = await client
-            .from("portfolio_assets")
-            .upsert(assets, { onConflict: `asset, portfolio_id` });
-
-        if (error) {
-            throw new Error(`Error creating record: ${error.message}`);
-        }
+        assets: PortfolioAsset[],
+    ): Promise<boolean> {
+        await this.db.query
+            .insertInto("portfolio_assets")
+            .values(assets)
+            .onConflict((oc) =>
+                oc.columns(["asset", "portfolio_id"]).doUpdateSet({
+                    asset: (eb) => eb.ref("excluded.asset"),
+                })
+            )
+            .execute();
 
         return true;
     }
@@ -178,54 +190,71 @@ export class PortfolioRepository {
         portfolioId: string,
         userId: string,
         pageOptionsDto: PageOptionsDto,
-    ) {
-        const client = this.supabaseService.getClient();
-
+    ): Promise<PageDto<PortfolioAsset>> {
         const { limit, skip } = pageOptionsDto;
 
-        const { data, count, error } = await client
-            .from("portfolio_assets")
-            .select(`*, portfolio!inner(user_id), asset(symbol, name, logo)`, {
-                count: "exact",
-            })
-            .eq("portfolio_id", portfolioId)
-            .eq("portfolio.user_id", userId)
-            .range(skip, skip + limit - 1);
+        const results = await this.db.query
+            .selectFrom("portfolio_assets")
+            .innerJoin(
+                "portfolio",
+                "portfolio.id",
+                "portfolio_assets.portfolio_id",
+            )
+            .innerJoin("asset", "asset.symbol", "portfolio_assets.asset")
+            .selectAll("portfolio_assets")
+            .select(["asset.symbol", "asset.name", "asset.logo"])
+            .select((eb) =>
+                eb
+                    .selectFrom("portfolio_assets")
+                    .innerJoin(
+                        "portfolio",
+                        "portfolio.id",
+                        "portfolio_assets.portfolio_id",
+                    )
+                    .where("portfolio_assets.portfolio_id", "=", portfolioId)
+                    .where("portfolio.user_id", "=", userId)
+                    .select((subEb) => subEb.fn.countAll().as("count"))
+                    .as("total_count")
+            )
+            .where("portfolio_assets.portfolio_id", "=", portfolioId)
+            .where("portfolio.user_id", "=", userId)
+            .limit(limit)
+            .offset(skip)
+            .execute();
 
-        if (error) {
-            throw new Error(
-                `Error retrieving portfolio assets: ${error.message}`,
-            );
-        }
+        const totalCount = results.length > 0
+            ? Number(results[0].total_count)
+            : 0;
 
         const pageMetaDto = new PageMetaDto({
-            itemCount: count,
+            itemCount: totalCount,
             pageOptionsDto,
         });
 
-        return new PageDto<PortfolioAsset>(data, pageMetaDto);
+        return new PageDto<PortfolioAsset>(
+            results.map(this.serializeAssets),
+            pageMetaDto,
+        );
     }
 
     async findAllPortfolioAssets(
         portfolioId: string,
         userId: string,
-    ) {
-        const client = this.supabaseService.getClient();
-
-        const { data, error } = await client
-            .from("portfolio_assets")
-            .select(
-                `*, portfolio!inner(user_id), asset(symbol, name, logo)`,
+    ): Promise<PortfolioAsset[]> {
+        const results = await this.db.query
+            .selectFrom("portfolio_assets")
+            .innerJoin(
+                "portfolio",
+                "portfolio.id",
+                "portfolio_assets.portfolio_id",
             )
-            .eq("portfolio_id", portfolioId)
-            .eq("portfolio.user_id", userId);
+            .innerJoin("asset", "asset.symbol", "portfolio_assets.asset")
+            .selectAll("portfolio_assets")
+            .select(["asset.symbol", "asset.name", "asset.logo"])
+            .where("portfolio_assets.portfolio_id", "=", portfolioId)
+            .where("portfolio.user_id", "=", userId)
+            .execute();
 
-        if (error) {
-            throw new Error(
-                `Error retrieving portfolio assets: ${error.message}`,
-            );
-        }
-
-        return data;
+        return results.map(this.serializeAssets);
     }
 }

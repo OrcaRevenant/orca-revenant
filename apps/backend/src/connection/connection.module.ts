@@ -4,10 +4,10 @@ import { ConnectionService } from "./connection.service";
 import { ConnectionRepository } from "./connection.repository";
 import { NobitexConnectionModule } from "@/nobitex-connection/nobitex-connection.module";
 import { ConnectionFactory } from "./connection.factory";
-import { SupabaseModule } from "@/common/supabase/supabase.module";
+import { DatabaseModule } from "@/database/database.module";
 
 @Module({
-  imports: [NobitexConnectionModule, SupabaseModule],
+  imports: [NobitexConnectionModule, DatabaseModule],
   controllers: [ConnectionController],
   providers: [ConnectionService, ConnectionFactory, ConnectionRepository],
   exports: [ConnectionService, ConnectionFactory, ConnectionRepository],

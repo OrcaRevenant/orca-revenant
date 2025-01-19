@@ -1,8 +1,16 @@
-import { Database } from "@orca/types";
+import { DB } from "@orca/types";
 
 export type PortfolioValue = {
     asset: string;
     balance: number;
 };
 
-export type Connection = Database["public"]["Tables"]["connection"]["Row"];
+export type Connection = {
+    created_at: string;
+    description: string | null;
+    enabled: boolean;
+    logo: string | null;
+    name: string;
+    title: string;
+    type: string;
+};

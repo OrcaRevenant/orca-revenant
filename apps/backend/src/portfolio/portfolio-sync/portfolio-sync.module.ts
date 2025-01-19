@@ -1,6 +1,5 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { PortfolioSyncService } from "./portfolio-sync.service";
-import { SupabaseModule } from "@/common/supabase/supabase.module";
 import { ConnectionModule } from "@/connection/connection.module";
 import { BullModule } from "@nestjs/bullmq";
 import { PortfolioSyncProcessor } from "./portfolio-sync.processor";
@@ -9,6 +8,7 @@ import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { TransactionModule } from "@/transaction/transaction.module";
 import { PortfolioModule } from "@/portfolio/portfolio.module";
 import { AssetModule } from "@/asset/asset.module";
+import { DatabaseModule } from "@/database/database.module";
 
 @Module({
   imports: [
@@ -19,7 +19,7 @@ import { AssetModule } from "@/asset/asset.module";
       name: "portfolio-sync",
       adapter: BullMQAdapter,
     }),
-    SupabaseModule,
+    DatabaseModule,
     ConnectionModule,
     TransactionModule,
     AssetModule,

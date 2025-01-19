@@ -1,19 +1,17 @@
-import { SupabaseService } from "@/common/supabase/supabase.service";
 import { Injectable } from "@nestjs/common";
 import { Asset } from "./asset.types";
+import { DatabaseService } from "@/database/database.service";
 
 @Injectable()
 export class AssetRepository {
-    private readonly table = "asset";
-
-    constructor(private readonly supabaseService: SupabaseService) {}
+    constructor(private readonly db: DatabaseService) {}
 
     async findAll(): Promise<Asset[]> {
-        const client = this.supabaseService.getClient();
-        const { data, error } = await client.from(this.table).select("*");
-        if (error) {
-            throw new Error(error.message);
-        }
-        return data;
+        const assets = await this.db.query
+            .selectFrom("asset")
+            .selectAll()
+            .execute();
+
+        return assets;
     }
 }

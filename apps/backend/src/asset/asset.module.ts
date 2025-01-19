@@ -1,9 +1,9 @@
 import { Module } from "@nestjs/common";
 import { AssetRepository } from "./asset.repository";
-import { SupabaseModule } from "@/common/supabase/supabase.module";
+import { DatabaseModule } from "@/database/database.module";
 
 @Module({
-  imports: [SupabaseModule],
+  imports: [DatabaseModule],
   providers: [AssetRepository],
   exports: [AssetRepository],
 })

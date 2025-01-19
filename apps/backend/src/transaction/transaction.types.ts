@@ -1,5 +1,11 @@
-import { Database } from "@orca/types";
-
-export type Transaction = Database["public"]["Tables"]["transaction"]["Row"];
-export type CreateTransaction =
-  Database["public"]["Tables"]["transaction"]["Insert"];
+export type Transaction = {
+  amount: number | null;
+  asset: string;
+  fee: number | null;
+  hash: string;
+  id: string;
+  portfolio_id: string;
+  time: string;
+  type: string;
+  value: number | null;
+};

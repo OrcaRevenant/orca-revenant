@@ -10,20 +10,24 @@
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "start:supabase": "supabase start",
-    "reset:db": "supabase db reset && pnpm run typegen",
     "run:functions": "supabase functions serve --no-verify-jwt --env-file .env.local",
-    "gen:types": "supabase gen types typescript --local > database.types.ts",
     "doc:start": "turbo run --filter=\"doc\" start:dev",
     "app:backend": "turbo run --filter=\"backend\"",
-    "typegen": "supabase gen types typescript --local > ./packages/types/src/database.types.ts"
+    "typegen": "kysely-codegen --env-file .env.development.local --out-file ./packages/types/src/database.types.ts",
+    "reset:db": "supabase db reset && pnpm kysely migrate:latest --cwd ./database && pnpm kysely seed:run --cwd ./database && pnpm typegen"
   },
   "license": "ISC",
   "dependencies": {
+    "kysely": "^0.27.5",
+    "pg": "^8.13.1",
     "prettier": "^3.2.5",
     "turbo": "^2.3.3",
     "typescript": "5.5.4"
   },
   "devDependencies": {
+    "@types/pg": "^8.11.10",
+    "kysely-codegen": "^0.17.0",
+    "kysely-ctl": "^0.10.1",
     "supabase": "^2.0.0",
     "turbo": "^2.3.3"
   },

@@ -128,11 +128,6 @@ export class PortfolioService {
             userId,
         );
 
-        await this.portfolioSyncService.updateStatusAndSendEvent(
-            port,
-            `inactive`,
-        );
-
         return port;
     }
 

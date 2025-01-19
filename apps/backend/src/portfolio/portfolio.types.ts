@@ -1,17 +1,23 @@
-import { Database } from "@orca/types";
+export type PortfolioStatus = "active" | "inactive" | "syncing" | "unknown";
 
-export type Portfolio = Database["public"]["Tables"]["portfolio"]["Row"];
-export type PortfolioStatus =
-    Database["public"]["Tables"]["portfolio"]["Row"][`status`];
-export type CreatePortfolio =
-    Database["public"]["Tables"]["portfolio"]["Insert"];
-export type UpdatePortfolio =
-    Database["public"]["Tables"]["portfolio"]["Insert"];
+export type Portfolio = {
+    api_key: string;
+    color: string;
+    connection_name: string;
+    created_at: string;
+    disabled: boolean;
+    id: string;
+    last_sync_at: string | null;
+    status: PortfolioStatus;
+    title: string;
+    user_id: string;
+};
 
-export type PortfolioAsset =
-    Database["public"]["Tables"]["portfolio_assets"]["Row"];
-export type CreatePortfolioAsset =
-    Database["public"]["Tables"]["portfolio_assets"]["Insert"];
+export type PortfolioAsset = {
+    amount: number;
+    asset: string;
+    portfolio_id: string;
+};
 
 export type PortfolioStatusUpdate = {
     portfolioId: string;

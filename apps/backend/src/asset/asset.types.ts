@@ -1,3 +1,6 @@
-import { Database } from "@orca/types";
-
-export type Asset = Database["public"]["Tables"]["asset"]["Row"];
+export type Asset = {
+    alt_names: string[];
+    logo: string | null;
+    name: string;
+    symbol: string;
+};

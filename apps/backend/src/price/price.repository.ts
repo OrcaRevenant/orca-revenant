@@ -1,103 +1,80 @@
 import { Injectable } from "@nestjs/common";
-import { SupabaseService } from "@/common/supabase/supabase.service";
-import { CreatePrice } from "./price.types";
+import { Kysely, sql } from "kysely";
+import { Price } from "./price.types";
 import dayjs from "dayjs";
+import { DB } from "@orca/types";
 
 @Injectable()
 export class PriceRepository {
     private readonly table = "price";
 
-    constructor(private readonly supabaseService: SupabaseService) {}
+    constructor(private readonly db: Kysely<DB>) {}
+
+    private serialize(price: any): Price {
+        return {
+            ...price,
+        };
+    }
 
     async clean(): Promise<boolean> {
-        const { data, error } = await this.supabaseService
-            .getClient()
-            .from(this.table)
-            .delete()
-            .neq("id", -1);
+        const result = await this.db
+            .deleteFrom(this.table)
+            .where("price", "!=", "-1")
+            .executeTakeFirst();
 
-        if (error || !data) {
-            return false;
-        }
-
-        return true;
+        return result?.numDeletedRows > 0;
     }
 
     async getLastPriceTime(asset: string): Promise<Date | null> {
-        const { data, error } = await this.supabaseService
-            .getClient()
-            .from(this.table)
+        const result = await this.db
+            .selectFrom(this.table)
             .select("time")
-            .eq("asset", asset)
-            .order("time", { ascending: false })
+            .where("asset", "=", asset)
+            .orderBy("time", "desc")
             .limit(1)
-            .single();
+            .executeTakeFirst();
 
-        if (error || !data) {
-            return null;
-        }
-
-        return new Date(data.time);
+        return result ? new Date(result.time) : null;
     }
 
-    async insertMany(
-        price: CreatePrice[],
-    ): Promise<void> {
-        const { error } = await this.supabaseService
-            .getClient()
-            .from(this.table)
-            .insert(price);
-
-        if (error) {
-            throw new Error(`Failed to insert prices: ${error.message}`);
+    async insertMany(prices: Partial<Price>[]): Promise<void> {
+        const result = await this.db.insertInto(this.table).values(prices)
+            .execute();
+        if (!result) {
+            throw new Error("Failed to insert prices");
         }
     }
 
-    async insert(
-        price: CreatePrice,
-    ): Promise<void> {
-        const { error } = await this.supabaseService
-            .getClient()
-            .from(this.table)
-            .insert(price);
-
-        if (error) {
-            throw new Error(`Failed to insert prices: ${error.message}`);
+    async insert(price: Partial<Price>): Promise<void> {
+        const result = await this.db.insertInto(this.table).values(price)
+            .execute();
+        if (!result) {
+            throw new Error("Failed to insert price");
         }
     }
 
-    async getNearestPrice(
-        asset: string,
-        time: string,
-    ): Promise<number | null> {
-        const client = this.supabaseService.getClient();
+    async getNearestPrice(asset: string, time: string): Promise<number | null> {
         const timestamp = dayjs(time).toISOString();
 
-        const { data, error } = await client
-            .from(this.table)
-            .select("*")
-            .eq("asset", asset)
-            .order(
-                `ABS(EXTRACT(EPOCH FROM time - TIMESTAMP '${timestamp}'))`,
-                { ascending: true },
+        const result = await this.db
+            .selectFrom(this.table)
+            .select(["price", "time"])
+            .where("asset", "=", asset)
+            .orderBy(
+                sql`ABS(EXTRACT(EPOCH FROM time - TIMESTAMP ${
+                    sql.lit(timestamp)
+                }))`,
+                "asc",
             )
-            .limit(1);
+            .limit(1)
+            .executeTakeFirst();
 
-        if (error) {
-            throw new Error(`Error retrieving price: ${error.message}`);
-        }
+        if (!result) return null;
 
-        if (data.length === 0) return null;
-
-        const nearestPrice = data[0];
         const timeDiffInSeconds = Math.abs(
-            dayjs(timestamp).diff(
-                dayjs(nearestPrice.time),
-                "seconds",
-            ),
+            dayjs(timestamp).diff(dayjs(result.time), "seconds"),
         );
 
-        // If the gap is more than 2 minutes (120 seconds), return null
-        return timeDiffInSeconds <= 120 ? nearestPrice.price : null;
+        return timeDiffInSeconds <= 120 ? +result.price : null;
     }
 }

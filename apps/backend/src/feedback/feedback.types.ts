@@ -1,4 +1,7 @@
-import { Database } from "@orca/types";
-
-export type Feedback = Database["public"]["Tables"]["feedback"]["Row"];
-export type CreateFeedback = Database["public"]["Tables"]["feedback"]["Insert"];
+export type Feedback = {
+    content: string;
+    created_at: string;
+    id: string;
+    title: string;
+    user_id: string;
+};

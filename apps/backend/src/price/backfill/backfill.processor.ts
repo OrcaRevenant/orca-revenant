@@ -42,6 +42,6 @@ export class BackfillProcessor extends WorkerHost {
 
     console.log(`Trying to insert ${historicalPrices.length} records`);
 
-    // await this.priceRepository.insertMany(historicalPrices);
+    await this.priceRepository.insertMany(historicalPrices);
   }
 }

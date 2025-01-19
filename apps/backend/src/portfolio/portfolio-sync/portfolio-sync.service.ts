@@ -144,10 +144,10 @@ export class PortfolioSyncService implements OnModuleInit {
     }
 
     private async syncInitialPortfolios(syncThresholdMinutes: number = 5) {
-        // const portfolios = await this.portfolioRepository
-        //     .findUnsyncedPortfolios(syncThresholdMinutes);
         const portfolios = await this.portfolioRepository
-            .findAll();
+            .findUnsyncedPortfolios(syncThresholdMinutes);
+        // const portfolios = await this.portfolioRepository
+        //     .findAll();
 
         await Promise.all(
             portfolios.map(async (portfolio) => {

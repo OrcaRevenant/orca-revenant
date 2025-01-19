@@ -1,36 +1,43 @@
-import { SupabaseService } from "@/common/supabase/supabase.service";
 import { Injectable } from "@nestjs/common";
 import { Connection } from "./connection.types";
+import { DatabaseService } from "@/database/database.service";
 
 @Injectable()
 export class ConnectionRepository {
-    private readonly table = "connection";
+    constructor(private readonly db: DatabaseService) {}
 
-    constructor(private readonly supabaseService: SupabaseService) {}
+    private serialize(connection: any): Connection {
+        return {
+            created_at: connection.created_at,
+            description: connection.description,
+            enabled: connection.enabled,
+            logo: connection.logo,
+            name: connection.name,
+            title: connection.title,
+            type: connection.type,
+        };
+    }
 
     async findAll(): Promise<Connection[]> {
-        const client = this.supabaseService.getClient();
-        const { data, error } = await client.from(this.table).select("*");
-        if (error) {
-            throw new Error(`Error fetching data: ${error.message}`);
-        }
+        const results = await this.db.query
+            .selectFrom("connection")
+            .selectAll()
+            .execute();
 
-        return data;
+        return results.map(this.serialize);
     }
 
     async findOne(name: string): Promise<Connection> {
-        const client = this.supabaseService.getClient();
-        const { data, error } = await client
-            .from(this.table)
-            .select("*")
-            .eq("name", name)
-            .single();
-        if (error) {
-            throw new Error(
-                `Error fetching record with Name ${name}: ${error.message}`,
-            );
+        const result = await this.db.query
+            .selectFrom("connection")
+            .selectAll()
+            .where("name", "=", name)
+            .executeTakeFirst();
+
+        if (!result) {
+            throw new Error(`Connection with name '${name}' not found.`);
         }
 
-        return data;
+        return this.serialize(result);
     }
 }

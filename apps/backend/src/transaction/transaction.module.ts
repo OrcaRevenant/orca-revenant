@@ -1,9 +1,9 @@
 import { Module } from "@nestjs/common";
 import { TransactionRepository } from "./transaction.repository";
-import { SupabaseModule } from "@/common/supabase/supabase.module";
+import { DatabaseModule } from "@/database/database.module";
 
 @Module({
-    imports: [SupabaseModule],
+    imports: [DatabaseModule],
     providers: [TransactionRepository],
     exports: [TransactionRepository],
 })
