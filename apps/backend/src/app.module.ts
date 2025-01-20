@@ -17,6 +17,7 @@ import { DatabaseModule } from "./database/database.module";
 import { FeedbackModule } from "./feedback/feedback.module";
 import { ConnectionModule } from "./connection/connection.module";
 import { PortfolioModule } from "./portfolio/portfolio.module";
+import { PriceModule } from "./price/price.module";
 
 @Module({
   imports: [
@@ -44,10 +45,10 @@ import { PortfolioModule } from "./portfolio/portfolio.module";
     AuthModule,
     DatabaseModule,
     AssetModule,
-    // PriceModule,
-    FeedbackModule,
-    ConnectionModule,
-    PortfolioModule,
+    PriceModule,
+    // FeedbackModule,
+    // ConnectionModule,
+    // PortfolioModule,
   ],
   controllers: [AppController],
   providers: [AppService, {

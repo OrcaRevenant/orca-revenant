@@ -13,18 +13,26 @@ const InjectedConfig = ConfigModule.forFeature(databaseConfig);
   imports: [InjectedConfig],
   providers: [
     {
-      provide: "Kysely",
+      provide: "Pool",
       useFactory: (config: ConfigType<typeof databaseConfig>) => {
         const connectionString = config.url;
-        return new Kysely<DB>({
-          dialect: new PostgresDialect({
-            pool: new Pool({
-              connectionString,
-            }),
-          }),
+        return new Pool({
+          connectionString,
         });
       },
       inject: [databaseConfig.KEY],
+    },
+    {
+      provide: "Kysely",
+
+      useFactory: (pool: Pool) => {
+        return new Kysely<DB>({
+          dialect: new PostgresDialect({
+            pool,
+          }),
+        });
+      },
+      inject: ["Pool"],
     },
     DatabaseService,
   ],

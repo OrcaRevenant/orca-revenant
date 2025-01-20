@@ -6,8 +6,9 @@ import { Resolution } from "../price.abstract";
 @Injectable()
 export class BackfillService {
     constructor(
-        @InjectQueue("backfill") private readonly queue: Queue,
-    ) {}
+        @InjectQueue("backfill") public readonly queue: Queue,
+    ) {
+    }
 
     async addBackfillJob(
         asset: string,
@@ -23,7 +24,6 @@ export class BackfillService {
         }, {
             attempts: 3,
             backoff: 5000,
-            jobId: asset,
         });
     }
 }

@@ -10,6 +10,8 @@ export class MockService implements PriceAbstract {
         precision: 4,
     };
 
+    private currentPrices: Record<string, number> = {};
+
     async getAssetPrice(asset: string, timestamp: Date): Promise<number> {
         return this.getAssetPriceAtTime(asset, timestamp);
     }
@@ -62,6 +64,7 @@ export class MockService implements PriceAbstract {
 
         const { basePrice, fluctuationRange, precision } = assetData;
         const fluctuationFactor = this.generateFluctuation(
+            asset,
             time.getTime(),
             fluctuationRange,
         );
@@ -75,15 +78,39 @@ export class MockService implements PriceAbstract {
             this.defaultPrice;
 
         const { basePrice, fluctuationRange, precision } = assetData;
-        const fluctuationFactor = (Math.random() * 2 - 1) * fluctuationRange;
+        const fluctuationFactor = this.generateFluctuation(
+            asset,
+            Date.now(),
+            fluctuationRange,
+        );
 
         const price = basePrice * (1 + fluctuationFactor);
+        this.currentPrices[asset.toLowerCase()] = price;
         return Promise.resolve(this.roundToPrecision(price, precision));
     }
 
-    private generateFluctuation(timestamp: number, range: number): number {
+    private generateFluctuation(
+        asset: string,
+        timestamp: number,
+        range: number,
+    ): number {
         const seed = Math.sin(timestamp) * 10000;
-        return ((seed % 1) - 0.5) * 2 * range;
+        let result = ((seed % 1) - 0.5) * 2 * range;
+
+        const currentPrice = this.currentPrices[asset.toLowerCase()] ||
+            this.defaultPrice.basePrice;
+
+        // Increase the price if it has too many negatives
+        if (currentPrice < this.defaultPrice.basePrice * 0.5) {
+            result = Math.abs(result);
+        }
+
+        // Pump the price up heavily if it is close to 0
+        if (currentPrice < this.defaultPrice.basePrice * 0.1) {
+            result = Math.abs(result) * 10;
+        }
+
+        return result;
     }
 
     private roundToPrecision(value: number, precision: number): number {

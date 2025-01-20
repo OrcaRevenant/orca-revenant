@@ -28,11 +28,19 @@ export class PriceService implements OnModuleInit {
     // }
 
     async onModuleInit() {
-        console.log(`Cleaning db`);
-        await this.priceRepository.clean();
-        console.log(`Cleaned`);
+        // console.log(`draining queue`);
+        // await this.backfillService.queue.pause();
 
-        await this.performeBackfill();
+        // await this.backfillService.queue.drain();
+
+        // await this.backfillService.queue.obliterate({ force: true });
+        // console.log(`queue drained!`);
+
+        // console.log(`cleaning db`);
+        // await this.priceRepository.clean();
+        // console.log(`db cleaned!`);
+
+        // await this.performeBackfill();
         // await this.scheduleCurrentUpdate();
     }
 
@@ -54,45 +62,28 @@ export class PriceService implements OnModuleInit {
     }
 
     async performeBackfill() {
-        // const symbols = await this.getAssetSymbols();
+        const symbols = await this.getAssetSymbols();
 
         const endTrackingDate = this.currentDate.subtract(2, "minutes").startOf(
             "minute",
         );
 
-        const startTrackingFromDate = await this
-            .determineStartTrackingDate(
-                `btc`,
-                this.currentDate,
-            );
+        await Promise.all(
+            symbols.map(async (symbol) => {
+                const startTrackingFromDate = await this
+                    .determineStartTrackingDate(
+                        symbol,
+                        this.currentDate,
+                    );
 
-        await this.backfillService.addBackfillJob(
-            `btc`,
-            startTrackingFromDate.toDate(),
-            endTrackingDate.toDate(),
-            2,
+                await this.backfillService.addBackfillJob(
+                    symbol,
+                    startTrackingFromDate.toDate(),
+                    endTrackingDate.toDate(),
+                    2,
+                );
+            }),
         );
-
-        // await Promise.all(
-        //     symbols.map(async (symbol) => {
-        //         const startTrackingFromDate = await this
-        //             .determineStartTrackingDate(
-        //                 symbol,
-        //                 this.currentDate,
-        //             );
-
-        //         console.log(
-        //             `Backfilling for ${symbol} from ${startTrackingFromDate.toISOString()} to ${endTrackingDate.toISOString()}`,
-        //         );
-
-        //         await this.backfillService.addBackfillJob(
-        //             symbol,
-        //             startTrackingFromDate.toDate(),
-        //             endTrackingDate.toDate(),
-        //             2,
-        //         );
-        //     }),
-        // );
     }
 
     private async getAssetSymbols() {
@@ -104,19 +95,17 @@ export class PriceService implements OnModuleInit {
         asset: string,
         currentTimestamp: dayjs.Dayjs,
     ): Promise<dayjs.Dayjs> {
-        // const lastPriceTime = await this.priceRepository.getLastPriceTime(
-        //     asset,
-        // );
+        const lastPriceTime = await this.priceRepository.getLastPriceTime(
+            asset,
+        );
 
-        return currentTimestamp.subtract(100, "year").startOf("minutes");
+        if (!lastPriceTime) {
+            return currentTimestamp.subtract(1, "year").startOf("minutes");
+        }
 
-        // if (!lastPriceTime) {
-        //     return currentTimestamp.subtract(1, "year").startOf("minutes");
-        // }
-
-        // const lastPriceDate = dayjs(lastPriceTime);
-        // return lastPriceDate.isAfter(currentTimestamp)
-        //     ? currentTimestamp
-        //     : lastPriceDate;
+        const lastPriceDate = dayjs(lastPriceTime);
+        return lastPriceDate.isAfter(currentTimestamp)
+            ? currentTimestamp
+            : lastPriceDate;
     }
 }

@@ -15,6 +15,7 @@ import { SupabaseModule } from "@/common/supabase/supabase.module";
       defaultJobOptions: {
         removeOnComplete: true,
         removeOnFail: true,
+        attempts: 3,
       },
     }),
     BullBoardModule.forFeature({

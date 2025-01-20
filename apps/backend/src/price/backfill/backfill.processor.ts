@@ -9,7 +9,7 @@ import duration from "dayjs/plugin/duration";
 
 dayjs.extend(duration);
 
-@Processor("backfill")
+@Processor("backfill", { concurrency: 5, lockDuration: 300000 })
 export class BackfillProcessor extends WorkerHost {
   constructor(
     @Inject("PriceProvider") private readonly priceProvider: PriceAbstract,
@@ -31,7 +31,9 @@ export class BackfillProcessor extends WorkerHost {
   async process(job: Job<JobData>) {
     const { asset, from, to, resolution } = job.data;
 
-    console.log(`Trying to backfill ${asset} prices`);
+    console.log(
+      `Backfilling for ${asset} from ${from} to ${to}`,
+    );
 
     const historicalPrices = await this.priceProvider.getAssetHistoricalPrice(
       asset,
@@ -40,8 +42,12 @@ export class BackfillProcessor extends WorkerHost {
       resolution,
     );
 
-    console.log(`Trying to insert ${historicalPrices.length} records`);
-
-    await this.priceRepository.insertMany(historicalPrices);
+    try {
+      await this.priceRepository.copy(
+        historicalPrices,
+      );
+    } catch (error) {
+      console.log(error);
+    }
   }
 }

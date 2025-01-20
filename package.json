@@ -14,7 +14,8 @@
     "doc:start": "turbo run --filter=\"doc\" start:dev",
     "app:backend": "turbo run --filter=\"backend\"",
     "typegen": "kysely-codegen --env-file .env.development.local --out-file ./packages/types/src/database.types.ts",
-    "reset:db": "supabase db reset && pnpm kysely migrate:latest --cwd ./database && pnpm kysely seed:run --cwd ./database && pnpm typegen"
+    "update:db:max_locks_per_transaction": "docker exec -it supabase_db_orca-revenant bash -c 'echo \"max_locks_per_transaction = '128'\" >> /etc/postgresql/postgresql.conf && su postgres -c \"/usr/lib/postgresql/bin/pg_ctl reload\"'",
+    "reset:db": "supabase db reset && pnpm run update:db:max_locks_per_transaction && pnpm kysely migrate:latest --cwd ./database && pnpm kysely seed:run --cwd ./database && pnpm typegen"
   },
   "license": "ISC",
   "dependencies": {
