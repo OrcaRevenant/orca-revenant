@@ -1,11 +1,9 @@
 import { Kysely, sql } from "kysely";
 
 export async function up(db: Kysely<any>): Promise<void> {
-	// Ensure the timescaledb extension is installed
-	await sql`CREATE EXTENSION IF NOT EXISTS timescaledb WITH SCHEMA extensions`
+	await sql`create extension if not exists timescaledb with schema extensions`
 		.execute(db);
 
-	// Create the `price` table
 	await db.schema.createTable("public.price")
 		.addColumn(
 			"asset",
@@ -26,15 +24,12 @@ export async function up(db: Kysely<any>): Promise<void> {
 		.addPrimaryKeyConstraint("price_pkey", ["time", "asset"])
 		.execute();
 
-	// Convert the `price` table into a hypertable
 	await sql`SELECT create_hypertable('public.price', 'time')`.execute(db);
 
-	// Create a unique index on `asset` and `time`
 	await db.schema
-		.createIndex("unique_asset_time")
+		.createIndex("idx_price_asset_time")
 		.on("price")
 		.columns(["asset", "time"])
-		.unique()
 		.execute();
 }
 

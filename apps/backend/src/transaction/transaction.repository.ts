@@ -2,33 +2,29 @@ import { Injectable } from "@nestjs/common";
 import { Transaction } from "./transaction.types";
 import { PageDto, PageMetaDto, PageOptionsDto } from "@/pagination/dto";
 import { DatabaseService } from "@/database/database.service";
+import { sql } from "kysely";
 
 @Injectable()
 export class TransactionRepository {
-    private readonly table = "transaction";
     constructor(private readonly db: DatabaseService) {}
 
-    private serialize(transaction: any): Transaction {
+    private serialize(result: any): Transaction {
         return {
-            ...transaction,
+            id: result.id,
+            hash: result.hash,
+            portfolio_id: result.portfolio_id,
+            asset: result.asset,
+            amount: result.amount,
+            time: result.time,
+            type: result.type,
+            value: result.value,
         };
     }
 
     async createMany(transactions: Partial<Transaction>[]): Promise<boolean> {
-        const results = await this.db.query
-            .insertInto(this.table)
-            .values(transactions)
-            .onConflict((oc) =>
-                oc
-                    .columns(["hash"])
-                    .doNothing()
-            )
-            .execute();
-
-        if (!results) {
-            throw new Error(`Error inserting transactions.`);
-        }
-
+        const transactionsJsonb = JSON.stringify(transactions);
+        await sql`SELECT insert_transactions_with_values(${transactionsJsonb}::jsonb)`
+            .execute(this.db.query);
         return true;
     }
 
@@ -40,7 +36,7 @@ export class TransactionRepository {
         const { limit, skip } = pageOptionsDto;
 
         const results = await this.db.query
-            .selectFrom(this.table)
+            .selectFrom("transaction")
             .innerJoin("portfolio", "portfolio.id", "transaction.portfolio_id")
             .innerJoin("asset", "asset.symbol", "transaction.asset")
             .selectAll("transaction")

@@ -39,7 +39,6 @@ export class NobitexConnectionService implements ConnectionAbstract {
             return {
                 id: `${v.id}`,
                 amount: Math.abs(+(v.amount || 0)),
-                fee: +(v.calculatedFee || 0),
                 asset: v.currency,
                 time: v.created_at,
                 type: getTransactionTypeFromDescription(v),

@@ -145,6 +145,24 @@ export class PortfolioController {
         return this.portfolioService.sync(id, userId);
     }
 
+    @Get(":id/history/chart")
+    @UseGuards(JwtGuard)
+    async getHistoricalPortfolioValue(
+        @Req() req: AuthUserRequest,
+        @Param("id") id: string,
+        @Query("startDate") startDate: string,
+        @Query("endDate") endDate: string,
+        @Query("resolution") resolution: "hourly" | "daily",
+    ) {
+        // const userId = req.user.sub;
+        return this.portfolioService.getHistoricalPortfolioBalance(
+            id,
+            new Date(startDate),
+            new Date(endDate),
+            resolution,
+        );
+    }
+
     @Sse(":id/events")
     @UseGuards(JwtGuard)
     async notifyPortfolioStatus(

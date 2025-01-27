@@ -1,7 +1,6 @@
 export type Transaction = {
   amount: number | null;
   asset: string;
-  fee: number | null;
   hash: string;
   id: string;
   portfolio_id: string;

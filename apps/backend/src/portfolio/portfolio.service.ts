@@ -14,6 +14,20 @@ export class PortfolioService {
     ) {
     }
 
+    async getHistoricalPortfolioBalance(
+        portfolioId: string,
+        startDate: Date,
+        endDate: Date,
+        resolution: "hourly" | "daily",
+    ) {
+        return this.portfolioRepository.getHistoricalBalance(
+            portfolioId,
+            startDate,
+            endDate,
+            resolution,
+        );
+    }
+
     async calculatePortfolioBalance(
         portfolioId: string,
         userId: string,

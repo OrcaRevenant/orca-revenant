@@ -18,8 +18,7 @@ export type Health = `active` | `inactive`;
 export type Transaction = {
     id: UniqueIdentifier;
     time: string;
-    amount: number;
-    fee: number;
     asset: string;
     type: TransactionType;
+    amount: number;
 };

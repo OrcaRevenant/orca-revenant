@@ -6,11 +6,13 @@ import { BackfillService } from "./backfill/backfill.service";
 import { PriceRepository } from "./price.repository";
 import { AssetRepository } from "@/asset/asset.repository";
 import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
+import { SchedulerRegistry } from "@nestjs/schedule";
+import { CronJob } from "cron";
 
 @Injectable()
 export class PriceService implements OnModuleInit {
     private readonly currentDate = dayjs();
+
     constructor(
         @Inject(priceConfig.KEY) private readonly config: ConfigType<
             typeof priceConfig
@@ -19,93 +21,109 @@ export class PriceService implements OnModuleInit {
         private readonly backfillService: BackfillService,
         private readonly priceRepository: PriceRepository,
         private readonly assetRepository: AssetRepository,
-    ) {
-    }
-
-    // @Cron("0/2 * * * *")
-    // async scheduleCurrentUpdate() {
-    //     await this.updateAssetsPrice();
-    // }
+        private readonly schedulerRegistry: SchedulerRegistry,
+    ) {}
 
     async onModuleInit() {
-        // console.log(`draining queue`);
-        // await this.backfillService.queue.pause();
+        console.log(`Draining queue...`);
+        try {
+            await this.backfillService.queue.pause();
+            await this.backfillService.queue.drain();
+            await this.backfillService.queue.obliterate({ force: true });
+            console.log(`Queue drained successfully!`);
+            await this.performeBackfill();
+        } catch (error) {
+            console.error("Error during onModuleInit:", error);
+        }
+    }
 
-        // await this.backfillService.queue.drain();
+    private addUpdatePriceCronJob() {
+        const job = new CronJob(`*/2 * * * *`, async () => {
+            try {
+                await this.updateAssetsPrice();
+            } catch (error) {
+                console.error("Error in dynamically added cron job:", error);
+            }
+        });
 
-        // await this.backfillService.queue.obliterate({ force: true });
-        // console.log(`queue drained!`);
-
-        // console.log(`cleaning db`);
-        // await this.priceRepository.clean();
-        // console.log(`db cleaned!`);
-
-        // await this.performeBackfill();
-        // await this.scheduleCurrentUpdate();
+        this.schedulerRegistry.addCronJob("updateAssetsPrice", job);
     }
 
     private async updateAssetsPrice() {
-        const symbols = await this.getAssetSymbols();
+        try {
+            const symbols = await this.getAssetSymbols();
+            const currentUpdateDate = dayjs().startOf("minute").toDate();
+            const currentPrices = await this.priceProvider
+                .getCurrentAssetPrices(symbols);
 
-        const currentUpdateDate = dayjs().startOf("minute").toDate();
-        const currentPrices = await this.priceProvider.getCurrentAssetPrices(
-            symbols,
-        );
+            const records = Object.keys(currentPrices).map((symbol) => ({
+                asset: symbol,
+                price: currentPrices[symbol],
+                time: currentUpdateDate.toISOString(),
+            }));
 
-        const records = Object.keys(currentPrices).map((v) => ({
-            asset: v,
-            price: currentPrices[v],
-            time: currentUpdateDate.toISOString(),
-        }));
-
-        await this.priceRepository.insertMany(records);
+            await this.priceRepository.insertMany(records);
+        } catch (error) {
+            console.error("Error in updateAssetsPrice:", error);
+        }
     }
 
     async performeBackfill() {
         const symbols = await this.getAssetSymbols();
 
-        const endTrackingDate = this.currentDate.subtract(2, "minutes").startOf(
+        const endTrackingDate = this.currentDate.startOf(
             "minute",
         );
 
         await Promise.all(
             symbols.map(async (symbol) => {
                 const startTrackingFromDate = await this
-                    .determineStartTrackingDate(
-                        symbol,
-                        this.currentDate,
+                    .determineStartTrackingDate(symbol);
+
+                // Check for gaps between start and end tracking dates
+                const gapMinutes = endTrackingDate.diff(
+                    startTrackingFromDate,
+                    "minutes",
+                );
+
+                if (gapMinutes <= 2) {
+                    console.log(
+                        `No backfill needed for ${symbol}. Gap: ${gapMinutes} minutes.`,
                     );
+                    return; // Skip backfill if no gap or gap is too small
+                }
+
+                console.log(
+                    `Adding backfill job for ${symbol}: ${startTrackingFromDate} to ${endTrackingDate}`,
+                );
 
                 await this.backfillService.addBackfillJob(
                     symbol,
-                    startTrackingFromDate.toDate(),
+                    startTrackingFromDate.add(2, `minutes`).toDate(),
                     endTrackingDate.toDate(),
                     2,
                 );
             }),
         );
     }
-
-    private async getAssetSymbols() {
+    private async getAssetSymbols(): Promise<string[]> {
         const assets = await this.assetRepository.findAll();
-        return assets.map((v) => v.symbol);
+        return assets.map((asset) => asset.symbol);
     }
 
     private async determineStartTrackingDate(
         asset: string,
-        currentTimestamp: dayjs.Dayjs,
     ): Promise<dayjs.Dayjs> {
         const lastPriceTime = await this.priceRepository.getLastPriceTime(
             asset,
         );
-
         if (!lastPriceTime) {
-            return currentTimestamp.subtract(1, "year").startOf("minutes");
+            return this.currentDate.subtract(4, "year").startOf("minute");
         }
 
         const lastPriceDate = dayjs(lastPriceTime);
-        return lastPriceDate.isAfter(currentTimestamp)
-            ? currentTimestamp
+        return lastPriceDate.isAfter(this.currentDate)
+            ? this.currentDate
             : lastPriceDate;
     }
 }

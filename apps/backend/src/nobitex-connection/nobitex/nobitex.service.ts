@@ -3,10 +3,15 @@ import nobitexConnectionConfig from "./nobitex.config";
 import { ConfigType } from "@nestjs/config";
 import { HttpService } from "@nestjs/axios";
 import {
+    DepositResponse,
     NobitexOptionsResponse,
+    Order,
+    OrdersResponse,
     Transaction,
     TransactionsResponse,
     WalletsResponse,
+    Withdrawal,
+    WithdrawalsResponse,
 } from "./nobitex.types";
 import { catchError, firstValueFrom, Observable } from "rxjs";
 import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
@@ -31,6 +36,99 @@ export class NobitexService {
 
     async getAvailableAssets(apiKey: string) {
         return this.fetchData<NobitexOptionsResponse>(`/v2/options`, apiKey);
+    }
+
+    async getDeposits(
+        apiKey: string,
+        page: number = 1,
+    ) {
+        const pageSize = 100;
+        const response = await this.fetchData<DepositResponse>(
+            `/users/wallets/deposits/list`,
+            apiKey,
+            {
+                params: {
+                    page,
+                    pageSize: String(pageSize),
+                },
+            },
+        );
+
+        const deposits = response.deposits;
+
+        if (response.hasNext) {
+            const nextPageDeposits = await this.getDeposits(
+                apiKey,
+                page + 1,
+            );
+            deposits.push(...nextPageDeposits);
+        }
+
+        return deposits;
+    }
+
+    async getWithdrawals(
+        apiKey: string,
+        page: number = 1,
+    ): Promise<Withdrawal[]> {
+        const pageSize = 100;
+        const response = await this.fetchData<WithdrawalsResponse>(
+            `/users/wallets/withdraws/list`,
+            apiKey,
+            {
+                params: {
+                    page,
+                    pageSize: String(pageSize),
+                },
+            },
+        );
+
+        const withdrawals = response.withdraws;
+
+        if (response.hasNext) {
+            const nextPageWithdrawals = await this.getWithdrawals(
+                apiKey,
+                page + 1,
+            );
+            withdrawals.push(...nextPageWithdrawals);
+        }
+
+        return withdrawals;
+    }
+
+    async getOrders(
+        apiKey: string,
+        status: "all" | "open" | "closed" | "canceled" = "all",
+        page: number = 1,
+    ): Promise<Order[]> {
+        const pageSize = 100;
+        const response = await this.fetchData<OrdersResponse>(
+            `/market/orders/list`,
+            apiKey,
+            {
+                params: {
+                    status,
+                    page,
+                    tradeType: "spot",
+                    details: 2,
+                    pageSize: String(pageSize),
+                },
+            },
+        );
+
+        const orders = response.orders;
+
+        if (orders.length === pageSize) {
+            const nextPageOrders = await this.getOrders(
+                apiKey,
+                status,
+                page + 1,
+            );
+
+            orders.push(...nextPageOrders);
+        }
+
+        return orders;
     }
 
     async getTransactions(

@@ -118,36 +118,39 @@ export class PortfolioSyncService implements OnModuleInit {
         );
 
         const supportedSymbols = new Set(
-            supportedAssets.flatMap((
-                asset,
-            ) => [asset.symbol, ...(asset.alt_names || [])]),
+            supportedAssets.flatMap((asset) => [
+                asset.symbol,
+                ...(asset.alt_names || []),
+            ]),
         );
 
         const transactionsToInsert = transactions
-            .filter((v) => supportedSymbols.has(v.asset))
+            .filter((v) => {
+                return supportedSymbols.has(v.asset.toLowerCase());
+            })
             .map((v) => ({
                 amount: v.amount,
                 asset: v.asset,
-                fee: v.fee,
                 time: v.time,
                 type: v.type,
                 portfolio_id: portfolio.id,
                 hash: generateTransactionHash(v.id),
             }));
 
+        // Insert transactions into the database
         if (transactionsToInsert.length > 0) {
             await this.transactionRepository.createMany(transactionsToInsert);
-            console.log("Transactions inserted successfully");
+            console.log(`Transactions inserted successfully (${transactionsToInsert.length} records)`);
         } else {
             console.log("No supported transactions to insert");
         }
     }
 
     private async syncInitialPortfolios(syncThresholdMinutes: number = 5) {
-        const portfolios = await this.portfolioRepository
-            .findUnsyncedPortfolios(syncThresholdMinutes);
         // const portfolios = await this.portfolioRepository
-        //     .findAll();
+        //     .findUnsyncedPortfolios(syncThresholdMinutes);
+        const portfolios = await this.portfolioRepository
+            .findAll();
 
         await Promise.all(
             portfolios.map(async (portfolio) => {

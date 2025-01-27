@@ -1003,11 +1003,10 @@ export interface TimescaledbInformationJobStats {
 export interface Transaction {
   amount: Generated<Numeric | null>;
   asset: string;
-  fee: Generated<Numeric | null>;
   hash: string;
   id: Generated<Int8>;
   portfolio_id: Int8;
-  time: Timestamp | null;
+  time: Timestamp;
   type: string;
   value: Generated<Numeric | null>;
 }

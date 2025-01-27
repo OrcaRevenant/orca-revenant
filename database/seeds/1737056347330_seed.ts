@@ -93,7 +93,7 @@ export async function seed(db: Kysely<any>): Promise<void> {
 		connection_name: "nobitex",
 		title: "Adam Portfolio",
 		color: "#a11043",
-		api_key: "dcb28e8a993c641a1037eb9205c4e3cd1ceb7d28",
+		api_key: "bce11b4fa8efed02b36723cf700d9f8945626fba",
 	}).execute();
 
 	// Insert into public.asset
@@ -122,6 +122,11 @@ export async function seed(db: Kysely<any>): Promise<void> {
 			name: "Ton coin",
 			symbol: "ton",
 			logo: "https://bin.bnbstatic.com/static/assets/logos/TON.png",
+		},
+		{
+			name: "Iranian Rial",
+			symbol: "rls",
+			alt_names: [`﷼`],
 		},
 	]).execute();
 }

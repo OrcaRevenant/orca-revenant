@@ -3,6 +3,7 @@ import { UniqueIdentifier } from "@/connection/connection.abstract";
 import { PageDto, PageMetaDto, PageOptionsDto } from "@/pagination/dto";
 import { Portfolio, PortfolioAsset } from "./portfolio.types";
 import { DatabaseService } from "@/database/database.service";
+import { sql } from "kysely";
 
 @Injectable()
 export class PortfolioRepository {
@@ -256,5 +257,105 @@ export class PortfolioRepository {
             .execute();
 
         return results.map(this.serializeAssets);
+    }
+
+    async getHistoricalBalance(
+        portfolioId: string,
+        startDate: Date,
+        endDate: Date,
+        resolution: "hourly" | "daily" | "weekly" | "monthly",
+    ) {
+        const interval = this.getResolutionInterval(resolution);
+
+        // This query:
+        // 1. Creates time buckets based on resolution
+        // 2. Calculates running balance for each asset at each time point
+        // 3. Joins with prices to get valuations
+        // 4. Groups results by time bucket
+        return sql`
+          WITH time_buckets AS (
+            SELECT time_bucket(${interval}::interval, generate_series(
+              ${startDate}::timestamptz,
+              ${endDate}::timestamptz,
+              ${interval}::interval
+            )) AS bucket_time
+          ),
+          
+          asset_balances AS (
+            SELECT 
+              time_bucket(${interval}::interval, t.time) as bucket_time,
+              t.asset,
+              SUM(CASE 
+                WHEN t.type IN ('buy', 'deposit') THEN t.amount::numeric
+                WHEN t.type IN ('sell', 'withdrawal') THEN -t.amount::numeric
+                ELSE 0
+              END) OVER (
+                PARTITION BY t.asset 
+                ORDER BY time_bucket(${interval}::interval, t.time)
+              ) as running_balance
+            FROM public.transaction t
+            WHERE t.portfolio_id = ${portfolioId}
+            AND t.time <= ${endDate}::timestamptz
+          ),
+          
+          latest_balances AS (
+            SELECT DISTINCT ON (b.asset, tb.bucket_time)
+              tb.bucket_time,
+              b.asset,
+              LAST_VALUE(b.running_balance) OVER (
+                PARTITION BY b.asset, tb.bucket_time
+                ORDER BY b.bucket_time
+                RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+              ) as balance
+            FROM time_buckets tb
+            LEFT JOIN asset_balances b 
+              ON b.bucket_time <= tb.bucket_time
+            WHERE b.running_balance IS NOT NULL
+          ),
+          
+          valuations AS (
+            SELECT 
+              lb.bucket_time,
+              lb.asset,
+              lb.balance as amount,
+              p.price as price_per_unit,
+              (lb.balance * p.price) as value
+            FROM latest_balances lb
+            LEFT JOIN LATERAL (
+              SELECT price
+              FROM public.price
+              WHERE asset = lb.asset
+              AND time <= lb.bucket_time
+              ORDER BY time DESC
+              LIMIT 1
+            ) p ON true
+            WHERE lb.balance != 0
+          )
+          
+          SELECT 
+            v.bucket_time as time,
+            jsonb_agg(
+              jsonb_build_object(
+                'asset', v.asset,
+                'amount', v.amount::text,
+                'pricePerUnit', v.price_per_unit::text,
+                'value', v.value::text
+              )
+            ) as balances,
+            SUM(v.value)::text as total_value
+          FROM valuations v
+          GROUP BY v.bucket_time
+          ORDER BY v.bucket_time;
+        `.execute(this.db.query);
+    }
+
+    private getResolutionInterval(resolution: string): string {
+        const intervals = {
+            hourly: "1 hour",
+            daily: "1 day",
+            weekly: "1 week",
+            monthly: "1 month",
+        };
+        return intervals[resolution] || "1 day";
     }
 }

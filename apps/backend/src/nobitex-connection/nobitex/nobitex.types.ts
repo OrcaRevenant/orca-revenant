@@ -22,6 +22,8 @@ export interface NobitexMarketStat {
     dayChange: number;
 }
 
+type Status = "all" | "open" | "done" | "close";
+
 export type NobitexOptionsResponse = Reseponse<{
     features: {
         fcmEnabled: boolean;
@@ -96,17 +98,66 @@ export type WalletsResponse = Reseponse<{
     };
 }>;
 
+export type Deposit = {
+    txHash: string;
+    address: string;
+    confirmed: boolean;
+    transaction: Transaction;
+    currency: string;
+    blockchainUrl: string;
+    confirmations: number;
+    requiredConfirmations: number;
+    amount: string;
+};
+
 export type DepositResponse = PaginatedResponse<{
-    deposits: {
-        txHash: string;
-        address: string;
-        confirmed: boolean;
-        transaction: Transaction;
-        currency: string;
-        blockchainUrl: string;
-        confirmations: number;
-        requiredConfirmations: number;
-        amount: string;
-    }[];
-    hasNext: boolean;
+    deposits: Deposit[];
+}>;
+
+export type Order = {
+    id: number;
+    type: "sell" | "buy";
+    execution: "limit" | "market" | "stop_limit" | "stop_market";
+    status: Status;
+    srcCurrency: string;
+    dstCurrency: string;
+    price: string;
+    amount: string;
+    matchedAmount: string;
+    averagePrice: string;
+    fee: string;
+    clientOrderId: string;
+    totalPrice: string;
+    totalOrderPrice: string;
+    unmatchedAmount: string;
+    partial: boolean;
+    created_at: string;
+    market: string;
+};
+
+export type OrdersResponse = PaginatedResponse<{
+    orders: Order[];
+}>;
+
+export interface Withdrawal {
+    id: number;
+    createdAt: string;
+    status: Status;
+    amount: string;
+    currency: string;
+    address: string;
+    tag: string | null;
+    wallet_id: number;
+    blockchain_url: string;
+    is_cancelable: boolean;
+    network: string;
+    invoice: string | null;
+}
+
+export type WithdrawalsResponse = PaginatedResponse<{
+    withdraws: Withdrawal[];
+}>;
+
+export type WithdrawResponse = PaginatedResponse<{
+    withdraws: Withdrawal[];
 }>;

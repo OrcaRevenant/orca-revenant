@@ -46,9 +46,9 @@ import { PriceModule } from "./price/price.module";
     DatabaseModule,
     AssetModule,
     PriceModule,
-    // FeedbackModule,
-    // ConnectionModule,
-    // PortfolioModule,
+    FeedbackModule,
+    ConnectionModule,
+    PortfolioModule,
   ],
   controllers: [AppController],
   providers: [AppService, {
