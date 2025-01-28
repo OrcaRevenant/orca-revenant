@@ -16,7 +16,7 @@ export class FeedbackRepository {
     };
   }
 
-  async create(payload: Partial<Feedback>): Promise<Feedback> {
+  async insert(payload: Partial<Feedback>): Promise<Feedback> {
     const [feedback] = await this.db.query
       .insertInto("feedback")
       .values(payload)

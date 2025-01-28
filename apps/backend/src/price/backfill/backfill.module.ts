@@ -7,6 +7,7 @@ import { BullBoardModule } from "@bull-board/nestjs";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { PriceModule } from "../price.module";
 import { SupabaseModule } from "@/common/supabase/supabase.module";
+import { BackfillStatusService } from "./backfill-status.service";
 
 @Module({
   imports: [
@@ -26,7 +27,7 @@ import { SupabaseModule } from "@/common/supabase/supabase.module";
     SupabaseModule,
     forwardRef(() => PriceModule),
   ],
-  providers: [BackfillProcessor, BackfillService],
-  exports: [BackfillService],
+  providers: [BackfillProcessor, BackfillService, BackfillStatusService],
+  exports: [BackfillService, BackfillStatusService],
 })
 export class BackfillModule {}

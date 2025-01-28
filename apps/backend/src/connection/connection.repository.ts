@@ -27,7 +27,7 @@ export class ConnectionRepository {
         return results.map(this.serialize);
     }
 
-    async findOne(name: string): Promise<Connection> {
+    async findByName(name: string): Promise<Connection> {
         const result = await this.db.query
             .selectFrom("connection")
             .selectAll()

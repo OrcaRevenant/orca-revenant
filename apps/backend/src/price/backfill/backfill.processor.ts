@@ -43,7 +43,7 @@ export class BackfillProcessor extends WorkerHost {
     );
 
     try {
-      await this.priceRepository.copy(
+      await this.priceRepository.bulkInsertUsingCopy(
         historicalPrices,
       );
     } catch (error) {

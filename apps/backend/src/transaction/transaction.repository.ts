@@ -21,14 +21,15 @@ export class TransactionRepository {
         };
     }
 
-    async createMany(transactions: Partial<Transaction>[]): Promise<boolean> {
+    async insertMany(transactions: Partial<Transaction>[]): Promise<boolean> {
         const transactionsJsonb = JSON.stringify(transactions);
-        await sql`SELECT insert_transactions_with_values(${transactionsJsonb}::jsonb)`
-            .execute(this.db.query);
-        return true;
+        const records =
+            await sql`SELECT insert_transactions_with_values(${transactionsJsonb}::jsonb)`
+                .execute(this.db.query);
+        return records.rows.length > 0;
     }
 
-    async findAllByPortfolioId(
+    async findByPortfolioIdPaginated(
         portfolioId: string,
         userId: string,
         pageOptionsDto: PageOptionsDto,

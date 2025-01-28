@@ -18,6 +18,7 @@ import { FeedbackModule } from "./feedback/feedback.module";
 import { ConnectionModule } from "./connection/connection.module";
 import { PortfolioModule } from "./portfolio/portfolio.module";
 import { PriceModule } from "./price/price.module";
+import { EventEmitterModule } from "@nestjs/event-emitter";
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { PriceModule } from "./price/price.module";
         development: [`.env.development.local`, `.env.development`, `.env`],
       }[process.env.NODE_ENV || `development`],
     }),
+    EventEmitterModule.forRoot(),
     ExceptionModule,
     PassportModule,
     BullModule.forRoot({

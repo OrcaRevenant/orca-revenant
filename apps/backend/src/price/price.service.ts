@@ -62,7 +62,7 @@ export class PriceService implements OnModuleInit {
                 time: currentUpdateDate.toISOString(),
             }));
 
-            await this.priceRepository.insertMany(records);
+            await this.priceRepository.insertInChunks(records);
         } catch (error) {
             console.error("Error in updateAssetsPrice:", error);
         }
@@ -114,7 +114,7 @@ export class PriceService implements OnModuleInit {
     private async determineStartTrackingDate(
         asset: string,
     ): Promise<dayjs.Dayjs> {
-        const lastPriceTime = await this.priceRepository.getLastPriceTime(
+        const lastPriceTime = await this.priceRepository.findLatestTimestamp(
             asset,
         );
         if (!lastPriceTime) {

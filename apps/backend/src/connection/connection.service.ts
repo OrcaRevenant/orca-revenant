@@ -12,6 +12,6 @@ export class ConnectionService {
     }
 
     async findOne(name: string) {
-        return this.connectionRepository.findOne(name);
+        return this.connectionRepository.findByName(name);
     }
 }

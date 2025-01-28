@@ -14,13 +14,13 @@ export class PortfolioService {
     ) {
     }
 
-    async getHistoricalPortfolioBalance(
+    async findHistoricalBalance(
         portfolioId: string,
         startDate: Date,
         endDate: Date,
         resolution: "hourly" | "daily",
     ) {
-        return this.portfolioRepository.getHistoricalBalance(
+        return this.portfolioRepository.findHistoricalBalance(
             portfolioId,
             startDate,
             endDate,
@@ -28,25 +28,14 @@ export class PortfolioService {
         );
     }
 
-    async calculatePortfolioBalance(
+    async calculateBalance(
         portfolioId: string,
         userId: string,
     ) {
-        const assets = await this.portfolioRepository.findAllPortfolioAssets(
+        const balance = await this.portfolioRepository.findPortfolioBalance(
             portfolioId,
             userId,
         );
-
-        if (!assets) {
-            throw new Error(
-                `No assets found for portfolio with ID ${portfolioId}`,
-            );
-        }
-
-        // TODO: instead of adding with 0 it should multiply with price of that asset
-        const balance = assets.reduce((sum) => {
-            return sum + 0;
-        }, 0);
 
         return {
             balance,
@@ -57,7 +46,7 @@ export class PortfolioService {
         portfolioId: string,
         userId: string,
     ) {
-        const assets = await this.portfolioRepository.findAllPortfolioAssets(
+        const assets = await this.portfolioRepository.findPortfolioAssets(
             portfolioId,
             userId,
         );
@@ -68,43 +57,27 @@ export class PortfolioService {
             );
         }
 
-        const totalValue = assets.reduce((sum, asset) => {
-            return sum + asset.amount;
-        }, 0);
-
-        if (totalValue === 0) {
-            throw new Error(`Total portfolio value is zero.`);
-        }
-
-        const allocation = assets.map((asset) => {
-            const percentage = (asset.amount / totalValue) * 100;
-            return {
-                asset: asset.asset,
-                percentage: parseFloat(percentage.toFixed(2)),
-            };
-        });
-
-        return allocation;
+        return assets;
     }
 
-    async findUserPortfolioAssets(
+    async findAssets(
         id: string,
         userId: string,
         pageOptionsDto: PageOptionsDto,
     ) {
-        return this.portfolioRepository.findPortfolioAssets(
+        return this.portfolioRepository.findAssetsPaginated(
             id,
             userId,
             pageOptionsDto,
         );
     }
 
-    async findUserPortfolioTransactions(
+    async findTransactions(
         id: string,
         userId: string,
         pageOptionsDto: PageOptionsDto,
     ) {
-        return this.transactionRepository.findAllByPortfolioId(
+        return this.transactionRepository.findByPortfolioIdPaginated(
             id,
             userId,
             pageOptionsDto,
@@ -112,7 +85,7 @@ export class PortfolioService {
     }
 
     async sync(id: string, userId: string) {
-        const portoflio = await this.portfolioRepository.findOneByUserId(
+        const portoflio = await this.portfolioRepository.findByIdAndUser(
             id,
             userId,
         );
@@ -125,19 +98,19 @@ export class PortfolioService {
     }
 
     async findByUserId(userId: string) {
-        return this.portfolioRepository.findByUserId(userId);
+        return this.portfolioRepository.findByUser(userId);
     }
 
     async getStatus(id: string, userId: string) {
-        const portfolio = await this.portfolioRepository.findOneByUserId(
+        const portfolio = await this.portfolioRepository.findByIdAndUser(
             id,
             userId,
         );
         return portfolio.status;
     }
 
-    async findOneByUserId(id: string, userId: string) {
-        const port = await this.portfolioRepository.findOneByUserId(
+    async findByIdAndUser(id: string, userId: string) {
+        const port = await this.portfolioRepository.findByIdAndUser(
             id,
             userId,
         );
@@ -146,7 +119,7 @@ export class PortfolioService {
     }
 
     async create(createPortfolioDto: CreatePortfolioDto, userId: string) {
-        const portfolio = await this.portfolioRepository.create({
+        const portfolio = await this.portfolioRepository.insert({
             api_key: createPortfolioDto.apiKey,
             connection_name: createPortfolioDto.connection,
             title: createPortfolioDto.title,
@@ -164,7 +137,7 @@ export class PortfolioService {
         updatePortfolioDto: UpdatePortfolioDto,
         userId: string,
     ) {
-        const portfolio = await this.portfolioRepository.update(id, {
+        const portfolio = await this.portfolioRepository.updateById(id, {
             api_key: updatePortfolioDto.apiKey,
             connection_name: updatePortfolioDto.connection,
             title: updatePortfolioDto.title,
@@ -178,13 +151,13 @@ export class PortfolioService {
     }
 
     async remove(id: string, userId: string) {
-        return this.portfolioRepository.delete(id, userId);
+        return this.portfolioRepository.deleteById(id, userId);
     }
 
-    async isPortfolioOwner(
+    async isOwner(
         portfolioId: string,
         userId: string,
     ): Promise<boolean> {
-        return this.portfolioRepository.isPortfolioOwner(portfolioId, userId);
+        return this.portfolioRepository.isOwner(portfolioId, userId);
     }
 }

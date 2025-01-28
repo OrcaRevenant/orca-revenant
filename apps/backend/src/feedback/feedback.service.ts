@@ -7,7 +7,7 @@ export class FeedbackService {
   constructor(private readonly feedbackRepository: FeedbackRepository) {}
 
   async create(createFeedbackDto: CreateFeedbackDto, userId: string) {
-    return this.feedbackRepository.create({
+    return this.feedbackRepository.insert({
       content: createFeedbackDto.content,
       title: createFeedbackDto.title,
       user_id: userId,

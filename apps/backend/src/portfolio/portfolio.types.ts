@@ -1,3 +1,5 @@
+import { Asset } from "@/asset/asset.types";
+
 export type PortfolioStatus = "active" | "inactive" | "syncing" | "unknown";
 
 export type Portfolio = {

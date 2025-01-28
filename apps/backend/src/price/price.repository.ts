@@ -8,22 +8,20 @@ import { from as copyFrom } from "pg-copy-streams";
 
 @Injectable()
 export class PriceRepository {
-    private readonly table = "price";
-
     constructor(private readonly db: DatabaseService) {}
 
     async clean(): Promise<boolean> {
         const result = await this.db.query
-            .deleteFrom(this.table)
+            .deleteFrom("price")
             .where("price", "!=", "-1")
             .executeTakeFirst();
 
         return result?.numDeletedRows > 0;
     }
 
-    async getLastPriceTime(asset: string): Promise<Date | null> {
+    async findLatestTimestamp(asset: string): Promise<Date | null> {
         const result = await this.db.query
-            .selectFrom(this.table)
+            .selectFrom("price")
             .select("time")
             .where("asset", "=", asset)
             .orderBy("time", "desc")
@@ -33,7 +31,7 @@ export class PriceRepository {
         return result ? new Date(result.time) : null;
     }
 
-    async insertMany(
+    async insertInChunks(
         prices: Price[],
     ): Promise<void> {
         const chunkSize = 1000;
@@ -46,7 +44,7 @@ export class PriceRepository {
         }
     }
 
-    async copy(
+    async bulkInsertUsingCopy(
         prices: Price[],
     ): Promise<void> {
         const BATCH_SIZE = 10_000;
@@ -87,18 +85,23 @@ export class PriceRepository {
     }
 
     async insert(price: Partial<Price>): Promise<void> {
-        const result = await this.db.query.insertInto(this.table).values(price)
+        const result = await this.db.query.insertInto("price").values(
+            price,
+        )
             .execute();
         if (!result) {
             throw new Error("Failed to insert price");
         }
     }
 
-    async getNearestPrice(asset: string, time: string): Promise<number | null> {
+    async findClosestWithinThreshold(
+        asset: string,
+        time: string,
+    ): Promise<number | null> {
         const timestamp = dayjs(time).toISOString();
 
         const result = await this.db.query
-            .selectFrom(this.table)
+            .selectFrom("price")
             .select(["price", "time"])
             .where("asset", "=", asset)
             .orderBy(

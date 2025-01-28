@@ -41,7 +41,7 @@ export class PortfolioController {
     @UseGuards(JwtGuard)
     async findOne(@Req() req: AuthUserRequest, @Param("id") id: string) {
         const userId = req.user.sub;
-        return this.portfolioService.findOneByUserId(id, userId);
+        return this.portfolioService.findByIdAndUser(id, userId);
     }
 
     @Get(":id/assets")
@@ -52,7 +52,7 @@ export class PortfolioController {
         @Query() pageOptionsDto: PageOptionsDto,
     ) {
         const userId = req.user.sub;
-        return this.portfolioService.findUserPortfolioAssets(
+        return this.portfolioService.findAssets(
             id,
             userId,
             pageOptionsDto,
@@ -66,7 +66,7 @@ export class PortfolioController {
         @Param("id") id: string,
     ) {
         const userId = req.user.sub;
-        return this.portfolioService.calculatePortfolioBalance(
+        return this.portfolioService.calculateBalance(
             id,
             userId,
         );
@@ -106,7 +106,7 @@ export class PortfolioController {
         @Query() pageOptionsDto: PageOptionsDto,
     ) {
         const userId = req.user.sub;
-        return this.portfolioService.findUserPortfolioTransactions(
+        return this.portfolioService.findTransactions(
             id,
             userId,
             pageOptionsDto,
@@ -155,7 +155,7 @@ export class PortfolioController {
         @Query("resolution") resolution: "hourly" | "daily",
     ) {
         // const userId = req.user.sub;
-        return this.portfolioService.getHistoricalPortfolioBalance(
+        return this.portfolioService.findHistoricalBalance(
             id,
             new Date(startDate),
             new Date(endDate),
@@ -171,7 +171,7 @@ export class PortfolioController {
     ): Promise<Observable<PortfolioStatusUpdate>> {
         const userId = req.user.sub;
 
-        const isOwner = await this.portfolioService.isPortfolioOwner(
+        const isOwner = await this.portfolioService.isOwner(
             `${id}`,
             userId,
         );

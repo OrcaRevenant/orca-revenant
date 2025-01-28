@@ -7,11 +7,12 @@ import { Portfolio, PortfolioStatus } from "@/portfolio/portfolio.types";
 import { TransactionRepository } from "@/transaction/transaction.repository";
 import { generateTransactionHash } from "@/transaction/transaction.utils";
 import { InjectQueue } from "@nestjs/bullmq";
-import { Injectable, OnModuleInit } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
+import { OnEvent } from "@nestjs/event-emitter";
 import { Queue } from "bullmq";
 
 @Injectable()
-export class PortfolioSyncService implements OnModuleInit {
+export class PortfolioSyncService {
     constructor(
         private readonly connectionFactory: ConnectionFactory,
         private readonly transactionRepository: TransactionRepository,
@@ -21,16 +22,16 @@ export class PortfolioSyncService implements OnModuleInit {
         @InjectQueue("portfolio-sync") private readonly queue: Queue,
     ) {}
 
-    onModuleInit() {
+    @OnEvent("backfill.completed")
+    async onPriceBackfillCompleted() {
         this.syncInitialPortfolios();
     }
 
     async enqueueSyncJob(portfolio: Portfolio) {
-        await this.queue.add("sync-portfolio", portfolio);
-    }
-
-    private async sleep(ms: number): Promise<void> {
-        return new Promise((resolve) => setTimeout(resolve, ms));
+        await this.queue.add(`sync-portfolio-${portfolio.id}`, portfolio, {
+            attempts: 3,
+            backoff: 5000,
+        });
     }
 
     async sync(portfolio: Portfolio) {
@@ -57,7 +58,7 @@ export class PortfolioSyncService implements OnModuleInit {
         portfolio: Portfolio,
         status: PortfolioStatus,
     ) {
-        await this.portfolioRepository.updateStatus(
+        await this.portfolioRepository.updateStatusById(
             portfolio,
             status,
         );
@@ -96,10 +97,12 @@ export class PortfolioSyncService implements OnModuleInit {
             }));
 
         if (assetsToInsert.length > 0) {
-            await this.portfolioRepository.createManyPortfolioAssets(
+            await this.portfolioRepository.insertAssets(
                 assetsToInsert,
             );
-            console.log("Assets inserted successfully");
+            console.log(
+                `Assets inserted successfully (${assetsToInsert.length} records)`,
+            );
         } else {
             console.log("No supported assets to insert");
         }
@@ -139,18 +142,28 @@ export class PortfolioSyncService implements OnModuleInit {
 
         // Insert transactions into the database
         if (transactionsToInsert.length > 0) {
-            await this.transactionRepository.createMany(transactionsToInsert);
-            console.log(`Transactions inserted successfully (${transactionsToInsert.length} records)`);
+            await this.transactionRepository.insertMany(transactionsToInsert);
+            console.log(
+                `Transactions inserted successfully (${transactionsToInsert.length} records)`,
+            );
         } else {
             console.log("No supported transactions to insert");
         }
     }
 
     private async syncInitialPortfolios(syncThresholdMinutes: number = 5) {
-        // const portfolios = await this.portfolioRepository
-        //     .findUnsyncedPortfolios(syncThresholdMinutes);
         const portfolios = await this.portfolioRepository
-            .findAll();
+            .findUnsynced(syncThresholdMinutes);
+        // const portfolios = await this.portfolioRepository
+        //     .findAll();
+
+        if (portfolios.length > 0) {
+            console.log(
+                `Syncing ${portfolios.length} portfolios...`,
+            );
+        } else {
+            console.log(`No portfolios to sync`);
+        }
 
         await Promise.all(
             portfolios.map(async (portfolio) => {

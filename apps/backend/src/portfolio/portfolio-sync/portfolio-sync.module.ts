@@ -9,6 +9,8 @@ import { TransactionModule } from "@/transaction/transaction.module";
 import { PortfolioModule } from "@/portfolio/portfolio.module";
 import { AssetModule } from "@/asset/asset.module";
 import { DatabaseModule } from "@/database/database.module";
+import { PriceModule } from "@/price/price.module";
+import { BackfillModule } from "@/price/backfill/backfill.module";
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { DatabaseModule } from "@/database/database.module";
     TransactionModule,
     AssetModule,
     forwardRef(() => PortfolioModule),
+    PriceModule,
+    BackfillModule,
   ],
   providers: [
     PortfolioSyncService,
