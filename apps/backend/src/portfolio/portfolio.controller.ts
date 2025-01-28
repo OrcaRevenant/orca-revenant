@@ -41,7 +41,7 @@ export class PortfolioController {
     @UseGuards(JwtGuard)
     async findOne(@Req() req: AuthUserRequest, @Param("id") id: string) {
         const userId = req.user.sub;
-        return this.portfolioService.findByIdAndUser(id, userId);
+        return this.portfolioService.getById(id, userId);
     }
 
     @Get(":id/assets")
@@ -52,7 +52,7 @@ export class PortfolioController {
         @Query() pageOptionsDto: PageOptionsDto,
     ) {
         const userId = req.user.sub;
-        return this.portfolioService.findAssets(
+        return this.portfolioService.getAssets(
             id,
             userId,
             pageOptionsDto,
@@ -66,7 +66,7 @@ export class PortfolioController {
         @Param("id") id: string,
     ) {
         const userId = req.user.sub;
-        return this.portfolioService.calculateBalance(
+        return this.portfolioService.getBalance(
             id,
             userId,
         );
@@ -92,7 +92,7 @@ export class PortfolioController {
         @Param("id") id: string,
     ) {
         const userId = req.user.sub;
-        return this.portfolioService.calculateAssetAllocation(
+        return this.portfolioService.getAssetAllocation(
             id,
             userId,
         );
@@ -106,7 +106,7 @@ export class PortfolioController {
         @Query() pageOptionsDto: PageOptionsDto,
     ) {
         const userId = req.user.sub;
-        return this.portfolioService.findTransactions(
+        return this.portfolioService.getTransactions(
             id,
             userId,
             pageOptionsDto,
@@ -154,12 +154,30 @@ export class PortfolioController {
         @Query("endDate") endDate: string,
         @Query("resolution") resolution: "hourly" | "daily",
     ) {
-        // const userId = req.user.sub;
-        return this.portfolioService.findHistoricalBalance(
+        const userId = req.user.sub;
+        return this.portfolioService.getHistoricalBalance(
             id,
+            userId,
             new Date(startDate),
             new Date(endDate),
             resolution,
+        );
+    }
+
+    @Get(":id/asset/performance")
+    @UseGuards(JwtGuard)
+    async getAssetPerformance(
+        @Req() req: AuthUserRequest,
+        @Param("id") id: string,
+        @Query("startDate") startDate: string,
+        @Query("endDate") endDate: string,
+    ) {
+        const userId = req.user.sub;
+        return this.portfolioService.getAssetPerformance(
+            id,
+            userId,
+            new Date(startDate),
+            new Date(endDate),
         );
     }
 

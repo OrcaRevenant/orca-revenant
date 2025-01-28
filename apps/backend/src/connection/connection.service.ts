@@ -7,11 +7,11 @@ export class ConnectionService {
         private readonly connectionRepository: ConnectionRepository,
     ) {}
 
-    async findAll() {
+    async getAll() {
         return this.connectionRepository.findAll();
     }
 
-    async findOne(name: string) {
+    async getByName(name: string) {
         return this.connectionRepository.findByName(name);
     }
 }

@@ -14,21 +14,37 @@ export class PortfolioService {
     ) {
     }
 
-    async findHistoricalBalance(
+    async getHistoricalBalance(
         portfolioId: string,
+        userId: string,
         startDate: Date,
         endDate: Date,
         resolution: "hourly" | "daily",
     ) {
         return this.portfolioRepository.findHistoricalBalance(
             portfolioId,
+            userId,
             startDate,
             endDate,
             resolution,
         );
     }
 
-    async calculateBalance(
+    async getAssetPerformance(
+        portfolioId: string,
+        userId: string,
+        startDate: Date,
+        endDate: Date,
+    ) {
+        return this.portfolioRepository.findBestPerformingAsset(
+            portfolioId,
+            userId,
+            startDate,
+            endDate,
+        );
+    }
+
+    async getBalance(
         portfolioId: string,
         userId: string,
     ) {
@@ -42,7 +58,7 @@ export class PortfolioService {
         };
     }
 
-    async calculateAssetAllocation(
+    async getAssetAllocation(
         portfolioId: string,
         userId: string,
     ) {
@@ -60,7 +76,7 @@ export class PortfolioService {
         return assets;
     }
 
-    async findAssets(
+    async getAssets(
         id: string,
         userId: string,
         pageOptionsDto: PageOptionsDto,
@@ -72,7 +88,7 @@ export class PortfolioService {
         );
     }
 
-    async findTransactions(
+    async getTransactions(
         id: string,
         userId: string,
         pageOptionsDto: PageOptionsDto,
@@ -93,7 +109,7 @@ export class PortfolioService {
         return this.portfolioSyncService.enqueueSyncJob(portoflio);
     }
 
-    async findAll() {
+    async getAll() {
         return this.portfolioRepository.findAll();
     }
 
@@ -109,7 +125,7 @@ export class PortfolioService {
         return portfolio.status;
     }
 
-    async findByIdAndUser(id: string, userId: string) {
+    async getById(id: string, userId: string) {
         const port = await this.portfolioRepository.findByIdAndUser(
             id,
             userId,

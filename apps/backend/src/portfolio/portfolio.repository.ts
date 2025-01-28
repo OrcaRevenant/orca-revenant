@@ -328,10 +328,13 @@ export class PortfolioRepository {
 
     async findHistoricalBalance(
         portfolioId: string,
+        userId: string,
         startDate: Date,
         endDate: Date,
         resolution: "hourly" | "daily" | "weekly" | "monthly",
     ) {
+        await this.isOwner(portfolioId, userId);
+
         const interval = this.getResolutionInterval(resolution);
 
         // This query:
@@ -416,6 +419,180 @@ export class PortfolioRepository {
         `.execute(this.db.query);
 
         return records.rows;
+    }
+
+    async findBestPerformingAsset(
+        portfolioId: string,
+        userId: string,
+        startDate: Date,
+        endDate: Date,
+    ) {
+        await this.isOwner(portfolioId, userId);
+
+        const result = await sql`
+          WITH asset_prices AS (
+            SELECT 
+              pa.asset,
+              pa.amount,
+              a.name,
+              a.logo,
+              a.alt_names,
+              first_price.price as start_price,
+              last_price.price as current_price,
+              (last_price.price - first_price.price) as price_change,
+              ((last_price.price - first_price.price) / NULLIF(first_price.price, 0) * 100) as percentage_change,
+              (pa.amount * last_price.price) as total_value,
+              (pa.amount * (last_price.price - first_price.price)) as pnl
+            FROM portfolio_assets pa
+            INNER JOIN asset a ON a.symbol = pa.asset
+            LEFT JOIN LATERAL (
+              SELECT price
+              FROM price p
+              WHERE p.asset = pa.asset
+              AND p.time >= ${startDate}
+              ORDER BY p.time ASC
+              LIMIT 1
+            ) first_price ON true
+            LEFT JOIN LATERAL (
+              SELECT price
+              FROM price p
+              WHERE p.asset = pa.asset
+              AND p.time <= ${endDate}
+              ORDER BY p.time DESC
+              LIMIT 1
+            ) last_price ON true
+            WHERE pa.portfolio_id = ${portfolioId}
+            AND pa.amount > 0
+          )
+          SELECT *
+          FROM asset_prices
+          ORDER BY percentage_change DESC
+          LIMIT 1;
+        `.execute(this.db.query);
+
+        const asset = result.rows[0] as any;
+        return {
+            asset: {
+                symbol: asset.asset,
+                name: asset.name,
+                logo: asset.logo,
+            },
+            startPrice: Number(asset.start_price),
+            currentPrice: Number(asset.current_price),
+            priceChange: Number(asset.price_change),
+            percentageChange: Number(asset.percentage_change),
+            totalValue: Number(asset.total_value),
+            pnl: Number(asset.pnl),
+            amount: Number(asset.amount),
+        };
+    }
+
+    async getAssetPriceHistory(
+        portfolioId: number,
+        userId: string,
+        assetSymbol: string,
+        startDate: Date,
+        endDate: Date,
+        resolution: "hourly" | "daily" | "weekly" | "monthly",
+    ) {
+        await this.isOwner(portfolioId, userId);
+
+        const interval = this.getResolutionInterval(resolution);
+
+        const result = await sql`
+          WITH time_buckets AS (
+            SELECT time_bucket(${interval}::interval, generate_series(
+              ${startDate}::timestamptz,
+              ${endDate}::timestamptz,
+              ${interval}::interval
+            )) AS bucket_time
+          ),
+          
+          asset_info AS (
+            SELECT 
+              a.*,
+              pa.amount
+            FROM asset a
+            INNER JOIN portfolio_assets pa ON pa.asset = a.symbol
+            WHERE pa.portfolio_id = ${portfolioId}
+            AND a.symbol = ${assetSymbol}
+          ),
+    
+          price_history AS (
+            SELECT 
+              tb.bucket_time as time,
+              COALESCE(p.price, LAG(p.price) OVER (ORDER BY tb.bucket_time)) as price
+            FROM time_buckets tb
+            LEFT JOIN LATERAL (
+              SELECT price
+              FROM price
+              WHERE asset = ${assetSymbol}
+              AND time <= tb.bucket_time
+              ORDER BY time DESC
+              LIMIT 1
+            ) p ON true
+          ),
+          
+          performance_metrics AS (
+            SELECT 
+              MIN(price) as low_price,
+              MAX(price) as high_price,
+              FIRST_VALUE(price) OVER (ORDER BY time) as start_price,
+              LAST_VALUE(price) OVER (ORDER BY time RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as end_price
+            FROM price_history
+            WHERE price IS NOT NULL
+          )
+    
+          SELECT 
+            ai.symbol,
+            ai.name,
+            ai.logo,
+            ai.alt_names,
+            ai.amount,
+            ph.time,
+            ph.price,
+            (ph.price * ai.amount) as value,
+            pm.low_price,
+            pm.high_price,
+            pm.start_price,
+            pm.end_price,
+            (pm.end_price - pm.start_price) as price_change,
+            ((pm.end_price - pm.start_price) / NULLIF(pm.start_price, 0) * 100) as percentage_change,
+            (ai.amount * (pm.end_price - pm.start_price)) as pnl
+          FROM price_history ph
+          CROSS JOIN asset_info ai
+          CROSS JOIN performance_metrics pm
+          ORDER BY ph.time;
+        `.execute(this.db.query);
+
+        if (result.rows.length === 0) {
+            throw new NotFoundException("Asset not found in portfolio");
+        }
+
+        const firstRow = result.rows[0] as any;
+        const priceHistory = result.rows.map((row: any) => ({
+            time: row.time,
+            price: Number(row.price),
+            value: Number(row.value),
+        }));
+
+        return {
+            asset: {
+                symbol: firstRow.symbol,
+                name: firstRow.name,
+                logo: firstRow.logo,
+            },
+            priceHistory,
+            performanceMetrics: {
+                startPrice: Number(firstRow.start_price),
+                endPrice: Number(firstRow.end_price),
+                highPrice: Number(firstRow.high_price),
+                lowPrice: Number(firstRow.low_price),
+                priceChange: Number(firstRow.price_change),
+                percentageChange: Number(firstRow.percentage_change),
+                pnl: Number(firstRow.pnl),
+            },
+        };
     }
 
     private getResolutionInterval(resolution: string): string {

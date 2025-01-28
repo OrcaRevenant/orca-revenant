@@ -9,12 +9,12 @@ export class ConnectionController {
     @Get()
     @UseGuards(JwtGuard)
     async findAll() {
-        return this.connectionService.findAll();
+        return this.connectionService.getAll();
     }
 
     @Get(":name")
     @UseGuards(JwtGuard)
     async findOne(@Param("name") name: string) {
-        return this.connectionService.findOne(name);
+        return this.connectionService.getByName(name);
     }
 }
