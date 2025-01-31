@@ -1,5 +1,3 @@
-import { DB } from "@orca/types";
-
 export type PortfolioValue = {
     asset: string;
     balance: number;

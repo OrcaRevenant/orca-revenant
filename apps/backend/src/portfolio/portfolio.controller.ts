@@ -36,7 +36,6 @@ export class PortfolioController {
         @Req() req: AuthUserRequest,
     ) {
         const userId = req.user.sub;
-
         return this.portfolioService.findByUserId(userId);
     }
 
@@ -48,7 +47,6 @@ export class PortfolioController {
         @Query("type") type: PortfolioType = "portfolio",
     ) {
         const userId = req.user.sub;
-
         return this.portfolioService.getBalance(
             id,
             userId,

@@ -1,4 +1,5 @@
 import { Kysely, sql } from "kysely";
+import { MOCK_ACCOUNTS } from "../../apps/backend/src/mock-connection/constants/config";
 
 export async function seed(db: Kysely<any>): Promise<void> {
 	// Insert into auth.users
@@ -78,23 +79,40 @@ export async function seed(db: Kysely<any>): Promise<void> {
 	]).execute();
 
 	// Insert into public.connection
-	await db.insertInto("public.connection").values({
+	await db.insertInto("public.connection").values([{
+		name: "mock",
+		title: "Mock",
+		type: "CEX",
+		logo:
+			"https://img.icons8.com/?size=100&id=dxoYK8bxqiJr&format=png&color=000000",
+		description: "Mock is the best exchange in the orca.",
+		enabled: true,
+	}, {
 		name: "nobitex",
 		title: "Nobitex",
 		type: "CEX",
 		logo: "https://nobitex.ir/favicon.png",
 		description: "Nobitex is a digital currency exchange in Iran.",
 		enabled: true,
-	}).execute();
+	}]).execute();
 
 	// Insert into public.portfolio
-	await db.insertInto("public.portfolio").values({
-		user_id: sql`(SELECT id FROM auth.users WHERE email = 'adam@orca.com')`,
-		connection_name: "nobitex",
-		title: "Adam Portfolio",
-		color: "#a11043",
-		api_key: "",
-	}).execute();
+	await db
+		.insertInto("public.portfolio")
+		.values(
+			MOCK_ACCOUNTS.flatMap((account) =>
+				account.portfolios.map((portfolio) => ({
+					user_id:
+						sql`(SELECT id FROM auth.users WHERE email = ${account.user})`,
+					connection_name: portfolio.connection_name,
+					title: portfolio.title,
+					color: portfolio.color,
+					api_key: portfolio.api_key,
+					group_id: portfolio.group_id,
+				}))
+			),
+		)
+		.execute();
 
 	// Insert into public.asset
 	await db.insertInto("public.asset").values([

@@ -31,10 +31,7 @@ export class PortfolioService {
         userId: string,
         type: PortfolioType,
     ): Promise<{ balance: number }> {
-        const portfolioIds = type === "group"
-            ? await this.portfolioGroupService.getById(id, userId)
-            : id;
-
+        const portfolioIds = await this.getPortfolioIds(id, userId, type);
         const balance = await this.portfolioRepository.findPortfolioBalance(
             portfolioIds,
             userId,
@@ -226,5 +223,21 @@ export class PortfolioService {
 
     async getUnsynced(minutes: number): Promise<Portfolio[]> {
         return this.portfolioRepository.findUnsynced(minutes);
+    }
+
+    private async getPortfolioIds(
+        id: string,
+        userId: string,
+        type: PortfolioType,
+    ): Promise<string | string[]> {
+        if (type === "group") {
+            const portfolios = await this.portfolioGroupService.getById(
+                id,
+                userId,
+            );
+            return portfolios.map((portfolio) => portfolio.id);
+        }
+
+        return id;
     }
 }
