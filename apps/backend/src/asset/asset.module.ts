@@ -1,10 +1,11 @@
 import { Module } from "@nestjs/common";
 import { AssetRepository } from "./asset.repository";
 import { DatabaseModule } from "@/database/database.module";
+import { AssetService } from "./asset.service";
 
 @Module({
   imports: [DatabaseModule],
-  providers: [AssetRepository],
-  exports: [AssetRepository],
+  providers: [AssetRepository, AssetService],
+  exports: [AssetRepository, AssetService],
 })
 export class AssetModule {}

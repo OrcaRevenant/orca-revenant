@@ -35,7 +35,7 @@ export class TransactionRepository {
         };
     }
 
-    async insertMany(transactions: Partial<Transaction>[]): Promise<boolean> {
+    async insert(transactions: Partial<Transaction>[]): Promise<boolean> {
         const transactionsJsonb = JSON.stringify(transactions);
         const records =
             await sql`SELECT insert_transactions_with_values(${transactionsJsonb}::jsonb)`

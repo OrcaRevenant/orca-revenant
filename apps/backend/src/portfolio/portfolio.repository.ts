@@ -6,12 +6,7 @@ import {
     NotFoundException,
 } from "@nestjs/common";
 import { UniqueIdentifier } from "@/connection/connection.abstract";
-import { PageDto, PageMetaDto, PageOptionsDto } from "@/pagination/dto";
-import {
-    PopulatedPortfolioAsset,
-    Portfolio,
-    PortfolioAsset,
-} from "./portfolio.types";
+import { Portfolio } from "./portfolio.types";
 import { DatabaseService } from "@/database/database.service";
 import { sql } from "kysely";
 
@@ -31,16 +26,6 @@ export class PortfolioRepository {
             user_id: `${portfolio.user_id}`,
             color: `${portfolio.color}`,
             status: portfolio.status,
-        };
-    }
-
-    private serializeAssets(result: any): PopulatedPortfolioAsset {
-        return {
-            amount: result.amount,
-            asset: result.asset,
-            portfolio_id: result.portfolio_id,
-            value: result.value,
-            price_per_unit: result.price_per_unit,
         };
     }
 
@@ -130,7 +115,8 @@ export class PortfolioRepository {
     }
 
     async updateStatusById(
-        portfolio: Portfolio,
+        portfolioId: string,
+        userId: string,
         status: Portfolio["status"],
     ): Promise<Portfolio> {
         const result = await this.db.query
@@ -139,8 +125,8 @@ export class PortfolioRepository {
                 status,
                 last_sync_at: new Date().toISOString(),
             })
-            .where("id", "=", portfolio.id)
-            .where("user_id", "=", portfolio.user_id)
+            .where("id", "=", portfolioId)
+            .where("user_id", "=", userId)
             .returningAll()
             .executeTakeFirst();
 
@@ -166,239 +152,6 @@ export class PortfolioRepository {
             .execute();
 
         return results.map(this.serialize);
-    }
-
-    async insertAssets(
-        assets: PortfolioAsset[],
-    ): Promise<boolean> {
-        await this.db.query
-            .insertInto("portfolio_assets")
-            .values(assets)
-            .onConflict((oc) =>
-                oc.columns(["asset", "portfolio_id"]).doUpdateSet({
-                    asset: (eb) => eb.ref("excluded.asset"),
-                })
-            )
-            .execute();
-
-        return true;
-    }
-
-    async getTree(userId: string): Promise<any[]> {
-        const result = await sql<any>`
-        WITH items AS (
-            -- Get all groups
-            SELECT 
-            id::text as id,
-            title,
-            color,
-            parent_id::text as parent_id,
-            'group'::text as type,
-            NULL::text as connection_name,
-            NULL::text as status,
-            NULL::boolean as disabled
-            FROM portfolio_group
-            WHERE user_id = ${userId}
-            
-            UNION ALL
-            
-            -- Get all portfolios
-            SELECT 
-            id::text as id,
-            title,
-            color,
-            group_id::text as parent_id,
-            'portfolio'::text as type,
-            connection_name,
-            status,
-            disabled
-            FROM portfolio
-            WHERE user_id = ${userId}
-        )
-        SELECT * FROM items
-        ORDER BY type DESC, id
-        `.execute(this.db.query);
-
-        return this.buildTree(result.rows);
-    }
-
-    private buildTree(items: any[]): any[] {
-        const tree = [];
-        const childrenOf = {};
-
-        // First create a map of all parent ids to empty arrays
-        items.forEach((item) => {
-            childrenOf[item.id] = [];
-        });
-
-        // Then populate the arrays with children
-        items.forEach((item) => {
-            const node: any = {
-                id: item.id,
-                title: item.title,
-                color: item.color,
-                type: item.type,
-            };
-
-            if (item.type === "portfolio") {
-                node.connection_name = item.connection_name;
-                node.status = item.status;
-                node.disabled = item.disabled;
-            }
-
-            if (item.parent_id && childrenOf[item.parent_id]) {
-                childrenOf[item.parent_id].push(node);
-            } else {
-                tree.push(node);
-            }
-        });
-
-        // Finally, add children arrays to parent nodes
-        items.forEach((item) => {
-            if (childrenOf[item.id].length > 0) {
-                const parent = tree.find((node) => node.id === item.id) ||
-                    tree.flatMap((node) => childrenOf[node.id]).find((node) =>
-                        node.id === item.id
-                    );
-                if (parent) {
-                    parent.children = childrenOf[item.id];
-                }
-            }
-        });
-
-        return tree;
-    }
-
-    async findAssetsPaginated(
-        portfolioId: string,
-        userId: string,
-        pageOptionsDto: PageOptionsDto,
-    ): Promise<PageDto<PortfolioAsset>> {
-        const { limit, skip } = pageOptionsDto;
-
-        const results = await sql<{
-            asset: string;
-            amount: string;
-            symbol: string;
-            name: string;
-            logo: string;
-            price_per_unit: string;
-            value: string;
-            total_count: number;
-        }>`
-            WITH paginated_assets AS (
-                SELECT 
-                    pa.*,
-                    a.symbol,
-                    a.name,
-                    a.logo,
-                    p.price as price_per_unit,
-                    (pa.amount * p.price) as value,
-                    COUNT(*) OVER() as total_count
-                FROM portfolio_assets pa
-                INNER JOIN portfolio pf ON pf.id = pa.portfolio_id
-                INNER JOIN asset a ON a.symbol = pa.asset
-                LEFT JOIN LATERAL (
-                    SELECT price
-                    FROM price
-                    WHERE asset = pa.asset
-                    ORDER BY time DESC
-                    LIMIT 1
-                ) p ON true
-                WHERE pa.portfolio_id = ${portfolioId}
-                AND pf.user_id = ${userId}
-                ORDER BY (pa.amount * p.price) DESC
-                LIMIT ${limit}
-                OFFSET ${skip}
-            )
-            SELECT 
-                asset,
-                amount::text,
-                symbol,
-                name,
-                logo,
-                price_per_unit::text,
-                value::text,
-                total_count::integer
-            FROM paginated_assets
-        `.execute(this.db.query);
-
-        const totalCount = results.rows.length > 0
-            ? Number(results.rows[0].total_count)
-            : 0;
-
-        const pageMetaDto = new PageMetaDto({
-            itemCount: totalCount,
-            pageOptionsDto,
-        });
-
-        return new PageDto<PortfolioAsset>(
-            results.rows.map((v) =>
-                this.serializeAssets({
-                    ...v,
-                    asset: {
-                        symbol: v.symbol,
-                        logo: v.logo,
-                        name: v.name,
-                    },
-                    value: Number(v.value),
-                    price_per_unit: Number(v.price_per_unit),
-                })
-            ),
-            pageMetaDto,
-        );
-    }
-
-    async findPortfolioAssets(
-        portfolioId: string,
-        userId: string,
-    ) {
-        await this.isOwner(portfolioId, userId);
-
-        const records = await sql`
-        WITH portfolio_with_prices AS (
-          SELECT 
-            pa.asset,
-            pa.amount,
-            a.name,
-            a.logo,
-            a.alt_names,
-            p.price as price_per_unit,
-            (pa.amount * p.price) as value
-          FROM portfolio_assets pa
-          INNER JOIN asset a ON a.symbol = pa.asset
-          LEFT JOIN LATERAL (
-            SELECT price
-            FROM price
-            WHERE asset = pa.asset
-            ORDER BY time DESC
-            LIMIT 1
-          ) p ON true
-          WHERE pa.portfolio_id = ${portfolioId}
-        )
-        SELECT 
-          pwp.asset as symbol,
-          pwp.name,
-          pwp.logo,
-          pwp.alt_names,
-          pwp.amount::text,
-          pwp.price_per_unit::text,
-          pwp.value::text,
-          (pwp.value / NULLIF(SUM(pwp.value) OVER (), 0) * 100)::text as allocation_percentage
-        FROM portfolio_with_prices pwp
-        ORDER BY pwp.value DESC;
-      `.execute(this.db.query);
-
-        const assets = records.rows.map((row: any) => ({
-            asset: {
-                symbol: row.symbol,
-                name: row.name,
-                logo: row.logo,
-            },
-            percentage: Number(row.allocation_percentage),
-        }));
-
-        return assets;
     }
 
     async findPortfolioAllocation(
@@ -767,84 +520,6 @@ export class PortfolioRepository {
             monthly: "1 month",
         };
         return intervals[resolution] || "1 day";
-    }
-
-    async findPortfoliosByGroupId(
-        groupId: string | "root",
-        userId: string,
-    ): Promise<any[]> {
-        if (groupId === "root") {
-            const result = await sql`
-                WITH RECURSIVE group_hierarchy AS (
-                -- Get all groups
-                SELECT id, parent_id
-                FROM portfolio_group
-                WHERE user_id = ${userId}
-                )
-                SELECT DISTINCT
-                p.id,
-                p.title,
-                p.color,
-                p.connection_name,
-                p.status,
-                p.disabled,
-                p.group_id,
-                'portfolio' as type
-                FROM portfolio p
-                WHERE p.user_id = ${userId}
-                ORDER BY p.id;
-            `.execute(this.db.query);
-
-            return result.rows;
-        } else {
-            const groupExists = await sql<any>`
-                SELECT EXISTS (
-                SELECT 1 
-                FROM portfolio_group 
-                WHERE id = ${groupId}::bigint 
-                AND user_id = ${userId}
-                ) as exists
-            `.execute(this.db.query);
-
-            if (!groupExists.rows[0].exists) {
-                throw new NotFoundException(
-                    `Group with id ${groupId} not found`,
-                );
-            }
-
-            const result = await sql`
-                WITH RECURSIVE group_hierarchy AS (
-                -- Base case: start with the specified group
-                SELECT id, parent_id
-                FROM portfolio_group
-                WHERE id = ${groupId}::bigint AND user_id = ${userId}
-        
-                UNION ALL
-        
-                -- Recursive case: get all child groups
-                SELECT pg.id, pg.parent_id
-                FROM portfolio_group pg
-                INNER JOIN group_hierarchy gh ON pg.parent_id = gh.id
-                WHERE pg.user_id = ${userId}
-                )
-                SELECT DISTINCT
-                p.id,
-                p.title,
-                p.color,
-                p.connection_name,
-                p.status,
-                p.disabled,
-                p.group_id,
-                'portfolio' as type
-                FROM portfolio p
-                LEFT JOIN group_hierarchy gh ON p.group_id = gh.id
-                WHERE (p.group_id = ${groupId}::bigint OR p.group_id IN (SELECT id FROM group_hierarchy))
-                AND p.user_id = ${userId}
-                ORDER BY p.id;
-            `.execute(this.db.query);
-
-            return result.rows;
-        }
     }
 
     async isOwner(

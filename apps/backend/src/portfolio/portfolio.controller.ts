@@ -34,13 +34,8 @@ export class PortfolioController {
     @UseGuards(JwtGuard)
     async getAll(
         @Req() req: AuthUserRequest,
-        @Query("type") type: PortfolioType = "portfolio",
     ) {
         const userId = req.user.sub;
-
-        if (type === `group`) {
-            return this.portfolioService.getTree(userId);
-        }
 
         return this.portfolioService.findByUserId(userId);
     }
@@ -66,14 +61,8 @@ export class PortfolioController {
     async getById(
         @Req() req: AuthUserRequest,
         @Param("id") id: string,
-        @Query("type") type: PortfolioType = "portfolio",
     ) {
         const userId = req.user.sub;
-
-        if (type === `group`) {
-            return this.portfolioService.getGroupById(userId, id);
-        }
-
         return this.portfolioService.getById(id, userId);
     }
 

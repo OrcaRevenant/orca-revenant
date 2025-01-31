@@ -1,24 +1,28 @@
-import { AssetRepository } from "@/asset/asset.repository";
+import { AssetService } from "@/asset/asset.service";
 import { Asset } from "@/asset/asset.types";
 import { ConnectionFactory } from "@/connection/connection.factory";
 import { PortfolioEventService } from "@/portfolio/portfolio-event.service";
-import { PortfolioRepository } from "@/portfolio/portfolio.repository";
 import { Portfolio, PortfolioStatus } from "@/portfolio/portfolio.types";
-import { TransactionRepository } from "@/transaction/transaction.repository";
 import { generateTransactionHash } from "@/transaction/transaction.utils";
 import { InjectQueue } from "@nestjs/bullmq";
-import { Injectable } from "@nestjs/common";
+import { forwardRef, Inject, Injectable } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
 import { Queue } from "bullmq";
+import { PortfolioService } from "../portfolio.service";
+import { TransactionService } from "@/transaction/transaction.service";
+import { PortfolioAssetService } from "../portfolio-asset/portfolio-asset.service";
 
 @Injectable()
 export class PortfolioSyncService {
     constructor(
+        @Inject(
+            forwardRef(() => PortfolioService),
+        ) private readonly portfolioService: PortfolioService,
         private readonly connectionFactory: ConnectionFactory,
-        private readonly transactionRepository: TransactionRepository,
-        private readonly portfolioRepository: PortfolioRepository,
-        private readonly assetRepository: AssetRepository,
+        private readonly transactionService: TransactionService,
+        private readonly assetService: AssetService,
         private readonly portfolioEventService: PortfolioEventService,
+        private readonly portfolioAssetService: PortfolioAssetService,
         @InjectQueue("portfolio-sync") private readonly queue: Queue,
     ) {}
 
@@ -39,7 +43,7 @@ export class PortfolioSyncService {
 
         await this.updateStatusAndSendEvent(portfolio, `syncing`);
 
-        const supportedAssets = await this.assetRepository.findAll();
+        const supportedAssets = await this.assetService.findAll();
 
         try {
             await Promise.all([
@@ -58,8 +62,9 @@ export class PortfolioSyncService {
         portfolio: Portfolio,
         status: PortfolioStatus,
     ) {
-        await this.portfolioRepository.updateStatusById(
-            portfolio,
+        await this.portfolioService.updateStatusById(
+            portfolio.id,
+            portfolio.user_id,
             status,
         );
 
@@ -97,7 +102,7 @@ export class PortfolioSyncService {
             }));
 
         if (assetsToInsert.length > 0) {
-            await this.portfolioRepository.insertAssets(
+            await this.portfolioAssetService.insert(
                 assetsToInsert,
             );
             console.log(
@@ -142,7 +147,7 @@ export class PortfolioSyncService {
 
         // Insert transactions into the database
         if (transactionsToInsert.length > 0) {
-            await this.transactionRepository.insertMany(transactionsToInsert);
+            await this.transactionService.insert(transactionsToInsert);
             console.log(
                 `Transactions inserted successfully (${transactionsToInsert.length} records)`,
             );
@@ -152,8 +157,8 @@ export class PortfolioSyncService {
     }
 
     private async syncInitialPortfolios(syncThresholdMinutes: number = 60) {
-        const portfolios = await this.portfolioRepository
-            .findUnsynced(syncThresholdMinutes);
+        const portfolios = await this.portfolioService
+            .getUnsynced(syncThresholdMinutes);
         // const portfolios = await this.portfolioRepospitory
         //     .findAll();
 

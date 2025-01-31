@@ -11,6 +11,7 @@ import { AssetModule } from "@/asset/asset.module";
 import { DatabaseModule } from "@/database/database.module";
 import { PriceModule } from "@/price/price.module";
 import { BackfillModule } from "@/price/backfill/backfill.module";
+import { PortfolioAssetModule } from "../portfolio-asset/portfolio-asset.module";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { BackfillModule } from "@/price/backfill/backfill.module";
     forwardRef(() => PortfolioModule),
     PriceModule,
     BackfillModule,
+    PortfolioAssetModule,
   ],
   providers: [
     PortfolioSyncService,

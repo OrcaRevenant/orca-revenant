@@ -4,7 +4,9 @@ import { CreatePortfolioDto, UpdatePortfolioDto } from "./dto";
 import { PortfolioSyncService } from "@/portfolio/portfolio-sync/portfolio-sync.service";
 import { TransactionRepository } from "@/transaction/transaction.repository";
 import { PageOptionsDto } from "@/pagination/dto";
-import { PortfolioType } from "./portfolio.types";
+import { Portfolio, PortfolioType } from "./portfolio.types";
+import { PortfolioAssetService } from "./portfolio-asset/portfolio-asset.service";
+import { PortfolioGroupService } from "./portfolio-group/portfolio-group.service";
 
 @Injectable()
 export class PortfolioService {
@@ -12,18 +14,33 @@ export class PortfolioService {
         private readonly portfolioRepository: PortfolioRepository,
         private readonly portfolioSyncService: PortfolioSyncService,
         private readonly transactionRepository: TransactionRepository,
+        private readonly portfolioAssetService: PortfolioAssetService,
+        private readonly portfolioGroupService: PortfolioGroupService,
     ) {
     }
 
-    async getTree(userId: string) {
-        return this.portfolioRepository.getTree(userId);
-    }
+    /**
+     * Retrieves the balance for either a single portfolio or a group of portfolios
+     * @param id - Portfolio ID or group ID
+     * @param userId - User's unique identifier
+     * @param type - Type of portfolio (single or group)
+     * @returns Object containing the portfolio balance
+     */
+    async getBalance(
+        id: string,
+        userId: string,
+        type: PortfolioType,
+    ): Promise<{ balance: number }> {
+        const portfolioIds = type === "group"
+            ? await this.portfolioGroupService.getById(id, userId)
+            : id;
 
-    async getGroupById(userId: string, groupId: string) {
-        return this.portfolioRepository.findPortfoliosByGroupId(
+        const balance = await this.portfolioRepository.findPortfolioBalance(
+            portfolioIds,
             userId,
-            groupId,
         );
+
+        return { balance };
     }
 
     async getHistoricalBalance(
@@ -74,36 +91,11 @@ export class PortfolioService {
         );
     }
 
-    /**
-     * Retrieves the balance for either a single portfolio or a group of portfolios
-     * @param id - Portfolio ID or group ID
-     * @param userId - User's unique identifier
-     * @param type - Type of portfolio (single or group)
-     * @returns Object containing the portfolio balance
-     */
-    async getBalance(
-        id: string,
-        userId: string,
-        type: PortfolioType,
-    ): Promise<{ balance: number }> {
-
-        const portfolioIds = type === "group"
-            ? await this.portfolioRepository.findPortfoliosByGroupId(id, userId)
-            : id;
-
-        const balance = await this.portfolioRepository.findPortfolioBalance(
-            portfolioIds,
-            userId,
-        );
-
-        return { balance };
-    }
-
     async getAssetAllocation(
         portfolioId: string,
         userId: string,
     ) {
-        const assets = await this.portfolioRepository.findPortfolioAssets(
+        const assets = await this.portfolioAssetService.getAllocation(
             portfolioId,
             userId,
         );
@@ -122,7 +114,7 @@ export class PortfolioService {
         userId: string,
         pageOptionsDto: PageOptionsDto,
     ) {
-        return this.portfolioRepository.findAssetsPaginated(
+        return this.portfolioAssetService.getByPortfolioIdPaginated(
             id,
             userId,
             pageOptionsDto,
@@ -213,10 +205,26 @@ export class PortfolioService {
         return this.portfolioRepository.deleteById(id, userId);
     }
 
+    async updateStatusById(
+        portfolioId: string,
+        userId: string,
+        status: Portfolio["status"],
+    ) {
+        return this.portfolioRepository.updateStatusById(
+            portfolioId,
+            userId,
+            status,
+        );
+    }
+
     async isOwner(
         portfolioId: string,
         userId: string,
     ): Promise<boolean> {
         return this.portfolioRepository.isOwner(portfolioId, userId);
+    }
+
+    async getUnsynced(minutes: number): Promise<Portfolio[]> {
+        return this.portfolioRepository.findUnsynced(minutes);
     }
 }
