@@ -93,7 +93,7 @@ export async function seed(db: Kysely<any>): Promise<void> {
 		connection_name: "nobitex",
 		title: "Adam Portfolio",
 		color: "#a11043",
-		api_key: "bce11b4fa8efed02b36723cf700d9f8945626fba",
+		api_key: "",
 	}).execute();
 
 	// Insert into public.asset

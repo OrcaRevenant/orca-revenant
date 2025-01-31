@@ -33,6 +33,36 @@ export async function up(db: Kysely<any>): Promise<void> {
 		)
 		.execute();
 
+	await db.schema
+		.createTable("public.portfolio_group")
+		.addColumn("id", "bigserial", (col) => col.notNull().primaryKey())
+		.addColumn("user_id", "uuid", (col) =>
+			col
+				.notNull()
+				.references("auth.users.id")
+				.onDelete("cascade")
+				.defaultTo(sql`auth.uid()`))
+		.addColumn("title", "varchar(255)", (col) => col.notNull())
+		.addColumn("parent_id", "bigint", (col) =>
+			col
+				.defaultTo(null)
+				.references("public.portfolio_group.id")
+				.onDelete("cascade"))
+		.addColumn(
+			"color",
+			"text",
+			(col) =>
+				col.notNull().defaultTo("#000000").check(
+					sql`color ~ '^#[0-9A-Fa-f]{6}$'`,
+				),
+		)
+		.addColumn(
+			"created_at",
+			"timestamptz",
+			(col) => col.notNull().defaultTo(sql`NOW()`),
+		)
+		.execute();
+
 	// Create Portfolio
 	await db.schema
 		.createTable("public.portfolio")
@@ -51,6 +81,13 @@ export async function up(db: Kysely<any>): Promise<void> {
 				.references("auth.users.id")
 				.onDelete("cascade")
 				.defaultTo(sql`auth.uid()`))
+		.addColumn(
+			"group_id",
+			"bigint",
+			(col) =>
+				col.defaultTo(null).references("public.portfolio_group.id")
+					.onDelete("cascade"),
+		)
 		.addColumn("title", "varchar(255)", (col) => col.notNull())
 		.addColumn("api_key", "text", (col) => col.notNull())
 		.addColumn(

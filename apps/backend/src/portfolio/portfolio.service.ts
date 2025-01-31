@@ -4,6 +4,7 @@ import { CreatePortfolioDto, UpdatePortfolioDto } from "./dto";
 import { PortfolioSyncService } from "@/portfolio/portfolio-sync/portfolio-sync.service";
 import { TransactionRepository } from "@/transaction/transaction.repository";
 import { PageOptionsDto } from "@/pagination/dto";
+import { PortfolioType } from "./portfolio.types";
 
 @Injectable()
 export class PortfolioService {
@@ -12,6 +13,17 @@ export class PortfolioService {
         private readonly portfolioSyncService: PortfolioSyncService,
         private readonly transactionRepository: TransactionRepository,
     ) {
+    }
+
+    async getTree(userId: string) {
+        return this.portfolioRepository.getTree(userId);
+    }
+
+    async getGroupById(userId: string, groupId: string) {
+        return this.portfolioRepository.findPortfoliosByGroupId(
+            userId,
+            groupId,
+        );
     }
 
     async getHistoricalBalance(
@@ -24,6 +36,24 @@ export class PortfolioService {
         return this.portfolioRepository.findHistoricalBalance(
             portfolioId,
             userId,
+            startDate,
+            endDate,
+            resolution,
+        );
+    }
+
+    async getAssetPriceHistoryChart(
+        portfolioId: string,
+        userId: string,
+        asset: string,
+        startDate: Date,
+        endDate: Date,
+        resolution: "hourly" | "daily",
+    ) {
+        return this.portfolioRepository.findAssetPriceHistory(
+            portfolioId,
+            userId,
+            asset,
             startDate,
             endDate,
             resolution,
@@ -44,18 +74,29 @@ export class PortfolioService {
         );
     }
 
+    /**
+     * Retrieves the balance for either a single portfolio or a group of portfolios
+     * @param id - Portfolio ID or group ID
+     * @param userId - User's unique identifier
+     * @param type - Type of portfolio (single or group)
+     * @returns Object containing the portfolio balance
+     */
     async getBalance(
-        portfolioId: string,
+        id: string,
         userId: string,
-    ) {
+        type: PortfolioType,
+    ): Promise<{ balance: number }> {
+
+        const portfolioIds = type === "group"
+            ? await this.portfolioRepository.findPortfoliosByGroupId(id, userId)
+            : id;
+
         const balance = await this.portfolioRepository.findPortfolioBalance(
-            portfolioId,
+            portfolioIds,
             userId,
         );
 
-        return {
-            balance,
-        };
+        return { balance };
     }
 
     async getAssetAllocation(
@@ -122,7 +163,9 @@ export class PortfolioService {
             id,
             userId,
         );
-        return portfolio.status;
+        return {
+            status: portfolio.status,
+        };
     }
 
     async getById(id: string, userId: string) {

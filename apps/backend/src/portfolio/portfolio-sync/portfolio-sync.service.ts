@@ -151,10 +151,10 @@ export class PortfolioSyncService {
         }
     }
 
-    private async syncInitialPortfolios(syncThresholdMinutes: number = 5) {
+    private async syncInitialPortfolios(syncThresholdMinutes: number = 60) {
         const portfolios = await this.portfolioRepository
             .findUnsynced(syncThresholdMinutes);
-        // const portfolios = await this.portfolioRepository
+        // const portfolios = await this.portfolioRepospitory
         //     .findAll();
 
         if (portfolios.length > 0) {

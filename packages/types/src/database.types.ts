@@ -727,6 +727,7 @@ export interface Portfolio {
   connection_name: string;
   created_at: Generated<Timestamp>;
   disabled: Generated<boolean>;
+  group_id: Generated<Int8 | null>;
   id: Generated<Int8>;
   last_sync_at: Timestamp | null;
   status: Generated<string>;
@@ -738,6 +739,15 @@ export interface PortfolioAssets {
   amount: Generated<Numeric>;
   asset: string;
   portfolio_id: Int8;
+}
+
+export interface PortfolioGroup {
+  color: Generated<string>;
+  created_at: Generated<Timestamp>;
+  id: Generated<Int8>;
+  parent_id: Int8 | null;
+  title: string;
+  user_id: Generated<string>;
 }
 
 export interface Price {
@@ -1095,6 +1105,7 @@ export interface DB {
   "pgsodium.valid_key": PgsodiumValidKey;
   portfolio: Portfolio;
   portfolio_assets: PortfolioAssets;
+  portfolio_group: PortfolioGroup;
   price: Price;
   "realtime.messages": RealtimeMessages;
   "realtime.schema_migrations": RealtimeSchemaMigrations;

@@ -7,7 +7,11 @@ import {
 } from "@nestjs/common";
 import { UniqueIdentifier } from "@/connection/connection.abstract";
 import { PageDto, PageMetaDto, PageOptionsDto } from "@/pagination/dto";
-import { Portfolio, PortfolioAsset } from "./portfolio.types";
+import {
+    PopulatedPortfolioAsset,
+    Portfolio,
+    PortfolioAsset,
+} from "./portfolio.types";
 import { DatabaseService } from "@/database/database.service";
 import { sql } from "kysely";
 
@@ -30,11 +34,13 @@ export class PortfolioRepository {
         };
     }
 
-    private serializeAssets(portfolioAsset: any): PortfolioAsset {
+    private serializeAssets(result: any): PopulatedPortfolioAsset {
         return {
-            amount: portfolioAsset.amount,
-            asset: portfolioAsset.asset,
-            portfolio_id: portfolioAsset.portfolio_id,
+            amount: result.amount,
+            asset: result.asset,
+            portfolio_id: result.portfolio_id,
+            value: result.value,
+            price_per_unit: result.price_per_unit,
         };
     }
 
@@ -144,29 +150,6 @@ export class PortfolioRepository {
         return this.serialize(result);
     }
 
-    async isOwner(
-        portfolioId: UniqueIdentifier,
-        userId: UniqueIdentifier,
-    ): Promise<boolean> {
-        const portfolio = await this.db.query
-            .selectFrom("portfolio")
-            .select(["id", "user_id"])
-            .where("id", "=", `${portfolioId}`)
-            .executeTakeFirst();
-
-        if (!portfolio) {
-            throw new NotFoundException("Portfolio not found");
-        }
-
-        if (portfolio.user_id !== userId) {
-            throw new ForbiddenException(
-                "Not authorized to access this portfolio",
-            );
-        }
-
-        return true;
-    }
-
     async findUnsynced(minutes: number): Promise<Portfolio[]> {
         const thresholdTime = new Date(Date.now() - minutes * 60 * 1000)
             .toISOString();
@@ -201,6 +184,91 @@ export class PortfolioRepository {
         return true;
     }
 
+    async getTree(userId: string): Promise<any[]> {
+        const result = await sql<any>`
+        WITH items AS (
+            -- Get all groups
+            SELECT 
+            id::text as id,
+            title,
+            color,
+            parent_id::text as parent_id,
+            'group'::text as type,
+            NULL::text as connection_name,
+            NULL::text as status,
+            NULL::boolean as disabled
+            FROM portfolio_group
+            WHERE user_id = ${userId}
+            
+            UNION ALL
+            
+            -- Get all portfolios
+            SELECT 
+            id::text as id,
+            title,
+            color,
+            group_id::text as parent_id,
+            'portfolio'::text as type,
+            connection_name,
+            status,
+            disabled
+            FROM portfolio
+            WHERE user_id = ${userId}
+        )
+        SELECT * FROM items
+        ORDER BY type DESC, id
+        `.execute(this.db.query);
+
+        return this.buildTree(result.rows);
+    }
+
+    private buildTree(items: any[]): any[] {
+        const tree = [];
+        const childrenOf = {};
+
+        // First create a map of all parent ids to empty arrays
+        items.forEach((item) => {
+            childrenOf[item.id] = [];
+        });
+
+        // Then populate the arrays with children
+        items.forEach((item) => {
+            const node: any = {
+                id: item.id,
+                title: item.title,
+                color: item.color,
+                type: item.type,
+            };
+
+            if (item.type === "portfolio") {
+                node.connection_name = item.connection_name;
+                node.status = item.status;
+                node.disabled = item.disabled;
+            }
+
+            if (item.parent_id && childrenOf[item.parent_id]) {
+                childrenOf[item.parent_id].push(node);
+            } else {
+                tree.push(node);
+            }
+        });
+
+        // Finally, add children arrays to parent nodes
+        items.forEach((item) => {
+            if (childrenOf[item.id].length > 0) {
+                const parent = tree.find((node) => node.id === item.id) ||
+                    tree.flatMap((node) => childrenOf[node.id]).find((node) =>
+                        node.id === item.id
+                    );
+                if (parent) {
+                    parent.children = childrenOf[item.id];
+                }
+            }
+        });
+
+        return tree;
+    }
+
     async findAssetsPaginated(
         portfolioId: string,
         userId: string,
@@ -208,37 +276,55 @@ export class PortfolioRepository {
     ): Promise<PageDto<PortfolioAsset>> {
         const { limit, skip } = pageOptionsDto;
 
-        const results = await this.db.query
-            .selectFrom("portfolio_assets")
-            .innerJoin(
-                "portfolio",
-                "portfolio.id",
-                "portfolio_assets.portfolio_id",
+        const results = await sql<{
+            asset: string;
+            amount: string;
+            symbol: string;
+            name: string;
+            logo: string;
+            price_per_unit: string;
+            value: string;
+            total_count: number;
+        }>`
+            WITH paginated_assets AS (
+                SELECT 
+                    pa.*,
+                    a.symbol,
+                    a.name,
+                    a.logo,
+                    p.price as price_per_unit,
+                    (pa.amount * p.price) as value,
+                    COUNT(*) OVER() as total_count
+                FROM portfolio_assets pa
+                INNER JOIN portfolio pf ON pf.id = pa.portfolio_id
+                INNER JOIN asset a ON a.symbol = pa.asset
+                LEFT JOIN LATERAL (
+                    SELECT price
+                    FROM price
+                    WHERE asset = pa.asset
+                    ORDER BY time DESC
+                    LIMIT 1
+                ) p ON true
+                WHERE pa.portfolio_id = ${portfolioId}
+                AND pf.user_id = ${userId}
+                ORDER BY (pa.amount * p.price) DESC
+                LIMIT ${limit}
+                OFFSET ${skip}
             )
-            .innerJoin("asset", "asset.symbol", "portfolio_assets.asset")
-            .selectAll("portfolio_assets")
-            .select(["asset.symbol", "asset.name", "asset.logo"])
-            .select((eb) =>
-                eb
-                    .selectFrom("portfolio_assets")
-                    .innerJoin(
-                        "portfolio",
-                        "portfolio.id",
-                        "portfolio_assets.portfolio_id",
-                    )
-                    .where("portfolio_assets.portfolio_id", "=", portfolioId)
-                    .where("portfolio.user_id", "=", userId)
-                    .select((subEb) => subEb.fn.countAll().as("count"))
-                    .as("total_count")
-            )
-            .where("portfolio_assets.portfolio_id", "=", portfolioId)
-            .where("portfolio.user_id", "=", userId)
-            .limit(limit)
-            .offset(skip)
-            .execute();
+            SELECT 
+                asset,
+                amount::text,
+                symbol,
+                name,
+                logo,
+                price_per_unit::text,
+                value::text,
+                total_count::integer
+            FROM paginated_assets
+        `.execute(this.db.query);
 
-        const totalCount = results.length > 0
-            ? Number(results[0].total_count)
+        const totalCount = results.rows.length > 0
+            ? Number(results.rows[0].total_count)
             : 0;
 
         const pageMetaDto = new PageMetaDto({
@@ -247,7 +333,18 @@ export class PortfolioRepository {
         });
 
         return new PageDto<PortfolioAsset>(
-            results.map(this.serializeAssets),
+            results.rows.map((v) =>
+                this.serializeAssets({
+                    ...v,
+                    asset: {
+                        symbol: v.symbol,
+                        logo: v.logo,
+                        name: v.name,
+                    },
+                    value: Number(v.value),
+                    price_per_unit: Number(v.price_per_unit),
+                })
+            ),
             pageMetaDto,
         );
     }
@@ -304,23 +401,90 @@ export class PortfolioRepository {
         return assets;
     }
 
-    async findPortfolioBalance(
-        portfolioId: string,
+    async findPortfolioAllocation(
+        portfolioIds: string[],
         userId: string,
+    ) {
+        // Verify ownership of all portfolios
+        await this.isOwner(portfolioIds, userId);
+
+        const result = await sql<
+            { id: string; title: string; balance: number; percentage: number }
+        >`
+            WITH portfolio_balances AS (
+                SELECT 
+                    p.id,
+                    p.title,
+                    COALESCE(SUM(pa.amount * price.price), 0) as balance
+                FROM portfolio p
+                LEFT JOIN portfolio_assets pa ON pa.portfolio_id = p.id
+                LEFT JOIN LATERAL (
+                    SELECT price
+                    FROM price
+                    WHERE asset = pa.asset
+                    ORDER BY time DESC
+                    LIMIT 1
+                ) price ON true
+                WHERE p.id = ANY(${portfolioIds})
+                GROUP BY p.id, p.title
+            ),
+            total_balance AS (
+                SELECT SUM(balance) as total FROM portfolio_balances
+            )
+            SELECT 
+                pb.id,
+                pb.title,
+                pb.balance::text,
+                (pb.balance / NULLIF(tb.total, 0) * 100)::text as percentage
+            FROM portfolio_balances pb
+            CROSS JOIN total_balance tb
+            ORDER BY pb.balance DESC;
+        `.execute(this.db.query);
+
+        return result.rows.map((row) => ({
+            portfolio: {
+                id: row.id,
+                title: row.title,
+            },
+            balance: Number(row.balance),
+            percentage: Number(row.percentage),
+        }));
+    }
+
+    async findPortfolioBalance(
+        portfolioIds: UniqueIdentifier | UniqueIdentifier[],
+        userId: UniqueIdentifier,
     ): Promise<number> {
-        await this.isOwner(portfolioId, userId);
+        const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
 
         const result = await sql`
-            SELECT SUM(pa.amount * p.price)::text as total_value
-            FROM portfolio_assets pa
-            LEFT JOIN LATERAL (
-            SELECT price
-            FROM price
-            WHERE asset = pa.asset
-            ORDER BY time DESC
-            LIMIT 1
-            ) p ON true
-            WHERE pa.portfolio_id = ${portfolioId};
+            WITH authorized_portfolios AS (
+                -- First verify ownership of all portfolios
+                SELECT id
+                FROM portfolio
+                WHERE id = ANY(${ids})
+                AND user_id = ${userId}
+            ),
+            portfolio_balances AS (
+                SELECT 
+                    pa.portfolio_id,
+                    pa.asset,
+                    pa.amount,
+                    p.price
+                FROM portfolio_assets pa
+                INNER JOIN authorized_portfolios ap ON pa.portfolio_id = ap.id
+                LEFT JOIN LATERAL (
+                    SELECT price
+                    FROM price
+                    WHERE asset = pa.asset
+                    ORDER BY time DESC
+                    LIMIT 1
+                ) p ON true
+            )
+            SELECT 
+                COALESCE(SUM(amount * price), 0)::text as total_value,
+                COUNT(DISTINCT portfolio_id) as found_portfolios
+            FROM portfolio_balances;
         `.execute(this.db.query);
 
         return Number((result.rows[0] as any)?.total_value || 0);
@@ -408,7 +572,7 @@ export class PortfolioRepository {
               jsonb_build_object(
                 'asset', v.asset,
                 'amount', v.amount::text,
-                'pricePerUnit', v.price_per_unit::text,
+                'price_per_unit', v.price_per_unit::text,
                 'value', v.value::text
               )
             ) as balances,
@@ -477,18 +641,18 @@ export class PortfolioRepository {
                 name: asset.name,
                 logo: asset.logo,
             },
-            startPrice: Number(asset.start_price),
-            currentPrice: Number(asset.current_price),
-            priceChange: Number(asset.price_change),
-            percentageChange: Number(asset.percentage_change),
-            totalValue: Number(asset.total_value),
+            start_price: Number(asset.start_price),
+            current_price: Number(asset.current_price),
+            price_change: Number(asset.price_change),
+            percentage_change: Number(asset.percentage_change),
+            total_value: Number(asset.total_value),
             pnl: Number(asset.pnl),
             amount: Number(asset.amount),
         };
     }
 
-    async getAssetPriceHistory(
-        portfolioId: number,
+    async findAssetPriceHistory(
+        portfolioId: string,
         userId: string,
         assetSymbol: string,
         startDate: Date,
@@ -603,5 +767,112 @@ export class PortfolioRepository {
             monthly: "1 month",
         };
         return intervals[resolution] || "1 day";
+    }
+
+    async findPortfoliosByGroupId(
+        groupId: string | "root",
+        userId: string,
+    ): Promise<any[]> {
+        if (groupId === "root") {
+            const result = await sql`
+                WITH RECURSIVE group_hierarchy AS (
+                -- Get all groups
+                SELECT id, parent_id
+                FROM portfolio_group
+                WHERE user_id = ${userId}
+                )
+                SELECT DISTINCT
+                p.id,
+                p.title,
+                p.color,
+                p.connection_name,
+                p.status,
+                p.disabled,
+                p.group_id,
+                'portfolio' as type
+                FROM portfolio p
+                WHERE p.user_id = ${userId}
+                ORDER BY p.id;
+            `.execute(this.db.query);
+
+            return result.rows;
+        } else {
+            const groupExists = await sql<any>`
+                SELECT EXISTS (
+                SELECT 1 
+                FROM portfolio_group 
+                WHERE id = ${groupId}::bigint 
+                AND user_id = ${userId}
+                ) as exists
+            `.execute(this.db.query);
+
+            if (!groupExists.rows[0].exists) {
+                throw new NotFoundException(
+                    `Group with id ${groupId} not found`,
+                );
+            }
+
+            const result = await sql`
+                WITH RECURSIVE group_hierarchy AS (
+                -- Base case: start with the specified group
+                SELECT id, parent_id
+                FROM portfolio_group
+                WHERE id = ${groupId}::bigint AND user_id = ${userId}
+        
+                UNION ALL
+        
+                -- Recursive case: get all child groups
+                SELECT pg.id, pg.parent_id
+                FROM portfolio_group pg
+                INNER JOIN group_hierarchy gh ON pg.parent_id = gh.id
+                WHERE pg.user_id = ${userId}
+                )
+                SELECT DISTINCT
+                p.id,
+                p.title,
+                p.color,
+                p.connection_name,
+                p.status,
+                p.disabled,
+                p.group_id,
+                'portfolio' as type
+                FROM portfolio p
+                LEFT JOIN group_hierarchy gh ON p.group_id = gh.id
+                WHERE (p.group_id = ${groupId}::bigint OR p.group_id IN (SELECT id FROM group_hierarchy))
+                AND p.user_id = ${userId}
+                ORDER BY p.id;
+            `.execute(this.db.query);
+
+            return result.rows;
+        }
+    }
+
+    async isOwner(
+        portfolioId: UniqueIdentifier | UniqueIdentifier[],
+        userId: UniqueIdentifier,
+    ): Promise<boolean> {
+        const ids = Array.isArray(portfolioId) ? portfolioId : [portfolioId];
+
+        const portfolios = await this.db.query
+            .selectFrom("portfolio")
+            .select(["id", "user_id"])
+            .where("id", "in", ids.map((id) => `${id}`))
+            .execute();
+
+        if (portfolios.length !== ids.length) {
+            throw new NotFoundException("Portfolio not found");
+        }
+
+        const hasUnauthorizedAccess = portfolios.some(
+            (portfolio) => portfolio.user_id !== `${userId}`,
+        );
+
+        if (hasUnauthorizedAccess) {
+            throw new ForbiddenException(
+                "Not authorized to access this portfolio",
+            );
+        }
+
+        return true;
     }
 }

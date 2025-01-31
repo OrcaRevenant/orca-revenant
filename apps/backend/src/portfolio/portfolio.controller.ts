@@ -18,7 +18,7 @@ import { AuthUserRequest } from "@/shared/types/request.types";
 import { CreatePortfolioDto, UpdatePortfolioDto } from "./dto";
 import { filter, map, Observable } from "rxjs";
 import { PortfolioEventService } from "./portfolio-event.service";
-import { PortfolioStatusUpdate } from "./portfolio.types";
+import { PortfolioStatusUpdate, PortfolioType } from "./portfolio.types";
 import { UniqueIdentifier } from "@/connection/connection.abstract";
 import { PageOptionsDto } from "@/pagination/dto";
 
@@ -32,31 +32,17 @@ export class PortfolioController {
 
     @Get()
     @UseGuards(JwtGuard)
-    async findAll(@Req() req: AuthUserRequest) {
-        const userId = req.user.sub;
-        return this.portfolioService.findByUserId(userId);
-    }
-
-    @Get(":id")
-    @UseGuards(JwtGuard)
-    async findOne(@Req() req: AuthUserRequest, @Param("id") id: string) {
-        const userId = req.user.sub;
-        return this.portfolioService.getById(id, userId);
-    }
-
-    @Get(":id/assets")
-    @UseGuards(JwtGuard)
-    async findAssets(
+    async getAll(
         @Req() req: AuthUserRequest,
-        @Param("id") id: string,
-        @Query() pageOptionsDto: PageOptionsDto,
+        @Query("type") type: PortfolioType = "portfolio",
     ) {
         const userId = req.user.sub;
-        return this.portfolioService.getAssets(
-            id,
-            userId,
-            pageOptionsDto,
-        );
+
+        if (type === `group`) {
+            return this.portfolioService.getTree(userId);
+        }
+
+        return this.portfolioService.findByUserId(userId);
     }
 
     @Get(":id/balance")
@@ -64,11 +50,46 @@ export class PortfolioController {
     async getBalance(
         @Req() req: AuthUserRequest,
         @Param("id") id: string,
+        @Query("type") type: PortfolioType = "portfolio",
     ) {
         const userId = req.user.sub;
+
         return this.portfolioService.getBalance(
             id,
             userId,
+            type,
+        );
+    }
+
+    @Get(":id")
+    @UseGuards(JwtGuard)
+    async getById(
+        @Req() req: AuthUserRequest,
+        @Param("id") id: string,
+        @Query("type") type: PortfolioType = "portfolio",
+    ) {
+        const userId = req.user.sub;
+
+        if (type === `group`) {
+            return this.portfolioService.getGroupById(userId, id);
+        }
+
+        return this.portfolioService.getById(id, userId);
+    }
+
+    @Get(":id/assets")
+    @UseGuards(JwtGuard)
+    async getAssets(
+        @Req() req: AuthUserRequest,
+        @Param("id") id: string,
+        @Query() pageOptionsDto: PageOptionsDto,
+    ) {
+        const userId = req.user.sub;
+
+        return this.portfolioService.getAssets(
+            id,
+            userId,
+            pageOptionsDto,
         );
     }
 
@@ -79,6 +100,7 @@ export class PortfolioController {
         @Param("id") id: string,
     ) {
         const userId = req.user.sub;
+
         return this.portfolioService.getStatus(
             id,
             userId,
@@ -92,6 +114,7 @@ export class PortfolioController {
         @Param("id") id: string,
     ) {
         const userId = req.user.sub;
+
         return this.portfolioService.getAssetAllocation(
             id,
             userId,
@@ -100,12 +123,13 @@ export class PortfolioController {
 
     @Get(":id/transactions")
     @UseGuards(JwtGuard)
-    async findTransactions(
+    async getTransactions(
         @Req() req: AuthUserRequest,
         @Param("id") id: string,
         @Query() pageOptionsDto: PageOptionsDto,
     ) {
         const userId = req.user.sub;
+
         return this.portfolioService.getTransactions(
             id,
             userId,
@@ -140,12 +164,16 @@ export class PortfolioController {
 
     @Post(":id/sync")
     @UseGuards(JwtGuard)
-    async sync(@Req() req: AuthUserRequest, @Param("id") id: string) {
+    async sync(
+        @Req() req: AuthUserRequest,
+        @Param("id") id: string,
+    ) {
         const userId = req.user.sub;
+
         return this.portfolioService.sync(id, userId);
     }
 
-    @Get(":id/history/chart")
+    @Get(":id/balance/history")
     @UseGuards(JwtGuard)
     async getHistoricalPortfolioValue(
         @Req() req: AuthUserRequest,
@@ -155,9 +183,32 @@ export class PortfolioController {
         @Query("resolution") resolution: "hourly" | "daily",
     ) {
         const userId = req.user.sub;
+
         return this.portfolioService.getHistoricalBalance(
             id,
             userId,
+            new Date(startDate),
+            new Date(endDate),
+            resolution,
+        );
+    }
+
+    // TODO:: should move to asset module
+    @Get(":id/assets/:asset/history")
+    @UseGuards(JwtGuard)
+    async getAssetChart(
+        @Req() req: AuthUserRequest,
+        @Param("id") id: string,
+        @Param("asset") asset: string,
+        @Query("startDate") startDate: string,
+        @Query("endDate") endDate: string,
+        @Query("resolution") resolution: "hourly" | "daily",
+    ) {
+        const userId = req.user.sub;
+        return this.portfolioService.getAssetPriceHistoryChart(
+            id,
+            userId,
+            asset,
             new Date(startDate),
             new Date(endDate),
             resolution,
@@ -173,6 +224,7 @@ export class PortfolioController {
         @Query("endDate") endDate: string,
     ) {
         const userId = req.user.sub;
+
         return this.portfolioService.getAssetPerformance(
             id,
             userId,
