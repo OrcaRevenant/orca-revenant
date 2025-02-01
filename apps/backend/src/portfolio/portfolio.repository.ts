@@ -1,9 +1,9 @@
 import {
-    ForbiddenException,
-    HttpException,
-    HttpStatus,
-    Injectable,
-    NotFoundException,
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
 } from "@nestjs/common";
 import { UniqueIdentifier } from "@/connection/connection.abstract";
 import { Portfolio } from "./portfolio.types";
@@ -12,158 +12,159 @@ import { sql } from "kysely";
 
 @Injectable()
 export class PortfolioRepository {
-    constructor(private readonly db: DatabaseService) {}
+  constructor(private readonly db: DatabaseService) {}
 
-    private serialize(portfolio: any): Portfolio {
-        return {
-            api_key: portfolio.api_key,
-            connection_name: portfolio.connection_name,
-            created_at: portfolio.created_at,
-            disabled: !!portfolio.disabled,
-            id: `${portfolio.id}`,
-            last_sync_at: portfolio.last_sync_at,
-            title: portfolio.title,
-            user_id: `${portfolio.user_id}`,
-            color: `${portfolio.color}`,
-            status: portfolio.status,
-        };
+  private serialize(portfolio: any): Portfolio {
+    return {
+      api_key: portfolio.api_key,
+      connection_name: portfolio.connection_name,
+      created_at: portfolio.created_at,
+      disabled: !!portfolio.disabled,
+      id: `${portfolio.id}`,
+      last_sync_at: portfolio.last_sync_at,
+      title: portfolio.title,
+      user_id: `${portfolio.user_id}`,
+      color: `${portfolio.color}`,
+      status: portfolio.status,
+    };
+  }
+
+  async insert(payload: Partial<Portfolio>): Promise<Portfolio> {
+    const result = await this.db.query
+      .insertInto("portfolio")
+      .values(payload)
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!result) {
+      throw new Error("Error creating portfolio");
+    }
+    return this.serialize(result);
+  }
+
+  async updateById(
+    id: UniqueIdentifier,
+    payload: Partial<Portfolio>,
+  ): Promise<Portfolio> {
+    const result = await this.db.query
+      .updateTable("portfolio")
+      .set(payload)
+      .where("id", "=", `${id}`)
+      .where("user_id", "=", payload.user_id)
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!result) {
+      throw new Error("Error updating portfolio");
     }
 
-    async insert(payload: Partial<Portfolio>): Promise<Portfolio> {
-        const result = await this.db.query
-            .insertInto("portfolio")
-            .values(payload)
-            .returningAll()
-            .executeTakeFirst();
+    return this.serialize(result);
+  }
 
-        if (!result) {
-            throw new Error("Error creating portfolio");
-        }
-        return this.serialize(result);
+  async deleteById(
+    id: UniqueIdentifier,
+    userId: UniqueIdentifier,
+  ): Promise<boolean> {
+    const result = await this.db.query
+      .deleteFrom("portfolio")
+      .where("id", "=", `${id}`)
+      .where("user_id", "=", `${userId}`)
+      .returning("id")
+      .executeTakeFirst();
+
+    if (!result) {
+      throw new HttpException("Not found", HttpStatus.NOT_FOUND);
+    }
+    return true;
+  }
+
+  async findByUser(userId: UniqueIdentifier): Promise<Portfolio[]> {
+    const results = await this.db.query
+      .selectFrom("portfolio")
+      .selectAll()
+      .where("user_id", "=", `${userId}`)
+      .execute();
+
+    return results.map(this.serialize);
+  }
+
+  async findAll(): Promise<Portfolio[]> {
+    const results = await this.db.query
+      .selectFrom("portfolio")
+      .selectAll()
+      .execute();
+
+    return results.map(this.serialize);
+  }
+
+  async findByIdAndUser(
+    id: UniqueIdentifier,
+    userId: UniqueIdentifier,
+  ): Promise<Portfolio> {
+    const result = await this.db.query
+      .selectFrom("portfolio")
+      .selectAll()
+      .where("id", "=", `${id}`)
+      .where("user_id", "=", `${userId}`)
+      .executeTakeFirst();
+
+    if (!result) {
+      throw new Error("Portfolio not found");
+    }
+    return this.serialize(result);
+  }
+
+  async updateStatusById(
+    portfolioId: string,
+    userId: string,
+    status: Portfolio["status"],
+  ): Promise<Portfolio> {
+    const result = await this.db.query
+      .updateTable("portfolio")
+      .set({
+        status,
+        last_sync_at: new Date().toISOString(),
+      })
+      .where("id", "=", portfolioId)
+      .where("user_id", "=", userId)
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!result) {
+      throw new Error("Error updating portfolio status");
     }
 
-    async updateById(
-        id: UniqueIdentifier,
-        payload: Partial<Portfolio>,
-    ): Promise<Portfolio> {
-        const result = await this.db.query
-            .updateTable("portfolio")
-            .set(payload)
-            .where("id", "=", `${id}`)
-            .where("user_id", "=", payload.user_id)
-            .returningAll()
-            .executeTakeFirst();
+    return this.serialize(result);
+  }
 
-        if (!result) {
-            throw new Error("Error updating portfolio");
-        }
+  async findUnsynced(minutes: number): Promise<Portfolio[]> {
+    const thresholdTime = new Date(Date.now() - minutes * 60 * 1000)
+      .toISOString();
 
-        return this.serialize(result);
-    }
+    const results = await this.db.query
+      .selectFrom("portfolio")
+      .selectAll()
+      .where((qb) =>
+        qb.or([
+          qb("last_sync_at", "is", null),
+          qb("last_sync_at", "<", thresholdTime as any),
+        ])
+      )
+      .execute();
 
-    async deleteById(
-        id: UniqueIdentifier,
-        userId: UniqueIdentifier,
-    ): Promise<boolean> {
-        const result = await this.db.query
-            .deleteFrom("portfolio")
-            .where("id", "=", `${id}`)
-            .where("user_id", "=", `${userId}`)
-            .returning("id")
-            .executeTakeFirst();
+    return results.map(this.serialize);
+  }
 
-        if (!result) {
-            throw new HttpException("Not found", HttpStatus.NOT_FOUND);
-        }
-        return true;
-    }
+  async findAllocation(
+    portfolioIds: string[],
+    userId: string,
+  ) {
+    // Verify ownership of all portfolios
+    await this.isOwner(portfolioIds, userId);
 
-    async findByUser(userId: UniqueIdentifier): Promise<Portfolio[]> {
-        const results = await this.db.query
-            .selectFrom("portfolio")
-            .selectAll()
-            .where("user_id", "=", `${userId}`)
-            .execute();
-
-        return results.map(this.serialize);
-    }
-
-    async findAll(): Promise<Portfolio[]> {
-        const results = await this.db.query
-            .selectFrom("portfolio")
-            .selectAll()
-            .execute();
-
-        return results.map(this.serialize);
-    }
-
-    async findByIdAndUser(
-        id: UniqueIdentifier,
-        userId: UniqueIdentifier,
-    ): Promise<Portfolio> {
-        const result = await this.db.query
-            .selectFrom("portfolio")
-            .selectAll()
-            .where("id", "=", `${id}`)
-            .where("user_id", "=", `${userId}`)
-            .executeTakeFirst();
-
-        if (!result) {
-            throw new Error("Portfolio not found");
-        }
-        return this.serialize(result);
-    }
-
-    async updateStatusById(
-        portfolioId: string,
-        userId: string,
-        status: Portfolio["status"],
-    ): Promise<Portfolio> {
-        const result = await this.db.query
-            .updateTable("portfolio")
-            .set({
-                status,
-                last_sync_at: new Date().toISOString(),
-            })
-            .where("id", "=", portfolioId)
-            .where("user_id", "=", userId)
-            .returningAll()
-            .executeTakeFirst();
-
-        if (!result) {
-            throw new Error("Error updating portfolio status");
-        }
-        return this.serialize(result);
-    }
-
-    async findUnsynced(minutes: number): Promise<Portfolio[]> {
-        const thresholdTime = new Date(Date.now() - minutes * 60 * 1000)
-            .toISOString();
-
-        const results = await this.db.query
-            .selectFrom("portfolio")
-            .selectAll()
-            .where((qb) =>
-                qb.or([
-                    qb("last_sync_at", "is", null),
-                    qb("last_sync_at", "<", thresholdTime as any),
-                ])
-            )
-            .execute();
-
-        return results.map(this.serialize);
-    }
-
-    async findPortfolioAllocation(
-        portfolioIds: string[],
-        userId: string,
-    ) {
-        // Verify ownership of all portfolios
-        await this.isOwner(portfolioIds, userId);
-
-        const result = await sql<
-            { id: string; title: string; balance: number; percentage: number }
-        >`
+    const result = await sql<
+      { id: string; title: string; balance: number; percentage: number }
+    >`
             WITH portfolio_balances AS (
                 SELECT 
                     p.id,
@@ -194,23 +195,23 @@ export class PortfolioRepository {
             ORDER BY pb.balance DESC;
         `.execute(this.db.query);
 
-        return result.rows.map((row) => ({
-            portfolio: {
-                id: row.id,
-                title: row.title,
-            },
-            balance: Number(row.balance),
-            percentage: Number(row.percentage),
-        }));
-    }
+    return result.rows.map((row) => ({
+      portfolio: {
+        id: row.id,
+        title: row.title,
+      },
+      balance: Number(row.balance),
+      percentage: Number(row.percentage),
+    }));
+  }
 
-    async findPortfolioBalance(
-        portfolioIds: UniqueIdentifier | UniqueIdentifier[],
-        userId: UniqueIdentifier,
-    ): Promise<number> {
-        const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
+  async findBalance(
+    portfolioIds: UniqueIdentifier | UniqueIdentifier[],
+    userId: UniqueIdentifier,
+  ): Promise<number> {
+    const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
 
-        const result = await sql`
+    const result = await sql`
             WITH authorized_portfolios AS (
                 -- First verify ownership of all portfolios
                 SELECT id
@@ -240,113 +241,124 @@ export class PortfolioRepository {
             FROM portfolio_balances;
         `.execute(this.db.query);
 
-        return Number((result.rows[0] as any)?.total_value || 0);
-    }
+    return Number((result.rows[0] as any)?.total_value || 0);
+  }
 
-    async findHistoricalBalance(
-        portfolioId: string,
-        userId: string,
-        startDate: Date,
-        endDate: Date,
-        resolution: "hourly" | "daily" | "weekly" | "monthly",
-    ) {
-        await this.isOwner(portfolioId, userId);
+  async findHistoricalBalance(
+    portfolioIds: string | string[],
+    userId: string,
+    startDate: Date,
+    endDate: Date,
+    resolution: "hourly" | "daily" | "weekly" | "monthly",
+  ) {
+    const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
+    const interval = this.getResolutionInterval(resolution);
 
-        const interval = this.getResolutionInterval(resolution);
-
-        // This query:
-        // 1. Creates time buckets based on resolution
-        // 2. Calculates running balance for each asset at each time point
-        // 3. Joins with prices to get valuations
-        // 4. Groups results by time bucket
-        const records = await sql`
-          WITH time_buckets AS (
-            SELECT time_bucket(${interval}::interval, generate_series(
-              ${startDate}::timestamptz,
-              ${endDate}::timestamptz,
-              ${interval}::interval
-            )) AS bucket_time
+    const records = await sql`
+          WITH authorized_portfolios AS (
+              -- Verify ownership of all portfolios
+              SELECT id
+              FROM portfolio
+              WHERE id = ANY(${ids})
+              AND user_id = ${userId}
           ),
-          
+          time_buckets AS (
+              SELECT time_bucket(${interval}::interval, generate_series(
+                  ${startDate}::timestamptz,
+                  ${endDate}::timestamptz,
+                  ${interval}::interval
+              )) AS bucket_time
+          ),
           asset_balances AS (
-            SELECT 
-              time_bucket(${interval}::interval, t.time) as bucket_time,
-              t.asset,
-              SUM(CASE 
-                WHEN t.type IN ('buy', 'deposit') THEN t.amount::numeric
-                WHEN t.type IN ('sell', 'withdrawal') THEN -t.amount::numeric
-                ELSE 0
-              END) OVER (
-                PARTITION BY t.asset 
-                ORDER BY time_bucket(${interval}::interval, t.time)
-              ) as running_balance
-            FROM public.transaction t
-            WHERE t.portfolio_id = ${portfolioId}
-            AND t.time <= ${endDate}::timestamptz
+              SELECT 
+                  time_bucket(${interval}::interval, t.time) as bucket_time,
+                  t.asset,
+                  t.portfolio_id,
+                  SUM(CASE 
+                      WHEN t.type IN ('buy', 'deposit') THEN t.amount::numeric
+                      WHEN t.type IN ('sell', 'withdrawal') THEN -t.amount::numeric
+                      ELSE 0
+                  END) OVER (
+                      PARTITION BY t.portfolio_id, t.asset 
+                      ORDER BY time_bucket(${interval}::interval, t.time)
+                  ) as running_balance
+              FROM public.transaction t
+              INNER JOIN authorized_portfolios ap ON t.portfolio_id = ap.id
+              WHERE t.time <= ${endDate}::timestamptz
           ),
           
           latest_balances AS (
-            SELECT DISTINCT ON (b.asset, tb.bucket_time)
-              tb.bucket_time,
-              b.asset,
-              LAST_VALUE(b.running_balance) OVER (
-                PARTITION BY b.asset, tb.bucket_time
-                ORDER BY b.bucket_time
-                RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
-              ) as balance
-            FROM time_buckets tb
-            LEFT JOIN asset_balances b 
-              ON b.bucket_time <= tb.bucket_time
-            WHERE b.running_balance IS NOT NULL
+              SELECT DISTINCT ON (b.portfolio_id, b.asset, tb.bucket_time)
+                  tb.bucket_time,
+                  b.portfolio_id,
+                  b.asset,
+                  LAST_VALUE(b.running_balance) OVER (
+                      PARTITION BY b.portfolio_id, b.asset, tb.bucket_time
+                      ORDER BY b.bucket_time
+                      RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+                  ) as balance
+              FROM time_buckets tb
+              LEFT JOIN asset_balances b 
+                  ON b.bucket_time <= tb.bucket_time
+              WHERE b.running_balance IS NOT NULL
+          ),
+          
+          aggregated_balances AS (
+              SELECT
+                  bucket_time,
+                  asset,
+                  SUM(balance) as total_balance
+              FROM latest_balances
+              GROUP BY bucket_time, asset
           ),
           
           valuations AS (
-            SELECT 
-              lb.bucket_time,
-              lb.asset,
-              lb.balance as amount,
-              p.price as price_per_unit,
-              (lb.balance * p.price) as value
-            FROM latest_balances lb
-            LEFT JOIN LATERAL (
-              SELECT price
-              FROM public.price
-              WHERE asset = lb.asset
-              AND time <= lb.bucket_time
-              ORDER BY time DESC
-              LIMIT 1
-            ) p ON true
-            WHERE lb.balance != 0
+              SELECT 
+                  ab.bucket_time,
+                  ab.asset,
+                  ab.total_balance as amount,
+                  p.price as price_per_unit,
+                  (ab.total_balance * p.price) as value
+              FROM aggregated_balances ab
+              LEFT JOIN LATERAL (
+                  SELECT price
+                  FROM public.price
+                  WHERE asset = ab.asset
+                  AND time <= ab.bucket_time
+                  ORDER BY time DESC
+                  LIMIT 1
+              ) p ON true
+              WHERE ab.total_balance != 0
           )
           
           SELECT 
-            v.bucket_time as time,
-            jsonb_agg(
-              jsonb_build_object(
-                'asset', v.asset,
-                'amount', v.amount::text,
-                'price_per_unit', v.price_per_unit::text,
-                'value', v.value::text
-              )
-            ) as balances,
-            SUM(v.value)::text as total_value
+              v.bucket_time as time,
+              jsonb_agg(
+                  jsonb_build_object(
+                      'asset', v.asset,
+                      'amount', v.amount::text,
+                      'price_per_unit', v.price_per_unit::text,
+                      'value', v.value::text
+                  )
+              ) as balances,
+              SUM(v.value)::text as total_value
           FROM valuations v
           GROUP BY v.bucket_time
           ORDER BY v.bucket_time;
-        `.execute(this.db.query);
+      `.execute(this.db.query);
 
-        return records.rows;
-    }
+    return records.rows;
+  }
 
-    async findBestPerformingAsset(
-        portfolioId: string,
-        userId: string,
-        startDate: Date,
-        endDate: Date,
-    ) {
-        await this.isOwner(portfolioId, userId);
+  async findBestPerformingAsset(
+    portfolioId: string,
+    userId: string,
+    startDate: Date,
+    endDate: Date,
+  ) {
+    await this.isOwner(portfolioId, userId);
 
-        const result = await sql`
+    const result = await sql`
           WITH asset_prices AS (
             SELECT 
               pa.asset,
@@ -387,36 +399,36 @@ export class PortfolioRepository {
           LIMIT 1;
         `.execute(this.db.query);
 
-        const asset = result.rows[0] as any;
-        return {
-            asset: {
-                symbol: asset.asset,
-                name: asset.name,
-                logo: asset.logo,
-            },
-            start_price: Number(asset.start_price),
-            current_price: Number(asset.current_price),
-            price_change: Number(asset.price_change),
-            percentage_change: Number(asset.percentage_change),
-            total_value: Number(asset.total_value),
-            pnl: Number(asset.pnl),
-            amount: Number(asset.amount),
-        };
-    }
+    const asset = result.rows[0] as any;
+    return {
+      asset: {
+        symbol: asset.asset,
+        name: asset.name,
+        logo: asset.logo,
+      },
+      start_price: Number(asset.start_price),
+      current_price: Number(asset.current_price),
+      price_change: Number(asset.price_change),
+      percentage_change: Number(asset.percentage_change),
+      total_value: Number(asset.total_value),
+      pnl: Number(asset.pnl),
+      amount: Number(asset.amount),
+    };
+  }
 
-    async findAssetPriceHistory(
-        portfolioId: string,
-        userId: string,
-        assetSymbol: string,
-        startDate: Date,
-        endDate: Date,
-        resolution: "hourly" | "daily" | "weekly" | "monthly",
-    ) {
-        await this.isOwner(portfolioId, userId);
+  async findAssetPriceHistory(
+    portfolioId: string,
+    userId: string,
+    assetSymbol: string,
+    startDate: Date,
+    endDate: Date,
+    resolution: "hourly" | "daily" | "weekly" | "monthly",
+  ) {
+    await this.isOwner(portfolioId, userId);
 
-        const interval = this.getResolutionInterval(resolution);
+    const interval = this.getResolutionInterval(resolution);
 
-        const result = await sql`
+    const result = await sql`
           WITH time_buckets AS (
             SELECT time_bucket(${interval}::interval, generate_series(
               ${startDate}::timestamptz,
@@ -482,72 +494,72 @@ export class PortfolioRepository {
           ORDER BY ph.time;
         `.execute(this.db.query);
 
-        if (result.rows.length === 0) {
-            throw new NotFoundException("Asset not found in portfolio");
-        }
-
-        const firstRow = result.rows[0] as any;
-        const priceHistory = result.rows.map((row: any) => ({
-            time: row.time,
-            price: Number(row.price),
-            value: Number(row.value),
-        }));
-
-        return {
-            asset: {
-                symbol: firstRow.symbol,
-                name: firstRow.name,
-                logo: firstRow.logo,
-            },
-            priceHistory,
-            performanceMetrics: {
-                startPrice: Number(firstRow.start_price),
-                endPrice: Number(firstRow.end_price),
-                highPrice: Number(firstRow.high_price),
-                lowPrice: Number(firstRow.low_price),
-                priceChange: Number(firstRow.price_change),
-                percentageChange: Number(firstRow.percentage_change),
-                pnl: Number(firstRow.pnl),
-            },
-        };
+    if (result.rows.length === 0) {
+      throw new NotFoundException("Asset not found in portfolio");
     }
 
-    private getResolutionInterval(resolution: string): string {
-        const intervals = {
-            hourly: "1 hour",
-            daily: "1 day",
-            weekly: "1 week",
-            monthly: "1 month",
-        };
-        return intervals[resolution] || "1 day";
+    const firstRow = result.rows[0] as any;
+    const priceHistory = result.rows.map((row: any) => ({
+      time: row.time,
+      price: Number(row.price),
+      value: Number(row.value),
+    }));
+
+    return {
+      asset: {
+        symbol: firstRow.symbol,
+        name: firstRow.name,
+        logo: firstRow.logo,
+      },
+      priceHistory,
+      performanceMetrics: {
+        startPrice: Number(firstRow.start_price),
+        endPrice: Number(firstRow.end_price),
+        highPrice: Number(firstRow.high_price),
+        lowPrice: Number(firstRow.low_price),
+        priceChange: Number(firstRow.price_change),
+        percentageChange: Number(firstRow.percentage_change),
+        pnl: Number(firstRow.pnl),
+      },
+    };
+  }
+
+  private getResolutionInterval(resolution: string): string {
+    const intervals = {
+      hourly: "1 hour",
+      daily: "1 day",
+      weekly: "1 week",
+      monthly: "1 month",
+    };
+    return intervals[resolution] || "1 day";
+  }
+
+  async isOwner(
+    portfolioId: UniqueIdentifier | UniqueIdentifier[],
+    userId: UniqueIdentifier,
+  ): Promise<boolean> {
+    const ids = Array.isArray(portfolioId) ? portfolioId : [portfolioId];
+
+    const portfolios = await this.db.query
+      .selectFrom("portfolio")
+      .select(["id", "user_id"])
+      .where("id", "in", ids.map((id) => `${id}`))
+      .execute();
+
+    if (portfolios.length !== ids.length) {
+      throw new NotFoundException("Portfolio not found");
     }
 
-    async isOwner(
-        portfolioId: UniqueIdentifier | UniqueIdentifier[],
-        userId: UniqueIdentifier,
-    ): Promise<boolean> {
-        const ids = Array.isArray(portfolioId) ? portfolioId : [portfolioId];
+    const hasUnauthorizedAccess = portfolios.some(
+      (portfolio) => portfolio.user_id !== `${userId}`,
+    );
 
-        const portfolios = await this.db.query
-            .selectFrom("portfolio")
-            .select(["id", "user_id"])
-            .where("id", "in", ids.map((id) => `${id}`))
-            .execute();
-
-        if (portfolios.length !== ids.length) {
-            throw new NotFoundException("Portfolio not found");
-        }
-
-        const hasUnauthorizedAccess = portfolios.some(
-            (portfolio) => portfolio.user_id !== `${userId}`,
-        );
-
-        if (hasUnauthorizedAccess) {
-            throw new ForbiddenException(
-                "Not authorized to access this portfolio",
-            );
-        }
-
-        return true;
+    if (hasUnauthorizedAccess) {
+      throw new ForbiddenException(
+        "Not authorized to access this portfolio",
+      );
     }
+
+    return true;
+  }
 }

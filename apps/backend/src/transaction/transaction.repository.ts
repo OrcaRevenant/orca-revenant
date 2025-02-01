@@ -43,12 +43,14 @@ export class TransactionRepository {
         return records.rows.length > 0;
     }
 
-    async findByPortfolioIdPaginated(
-        portfolioId: string,
+    async findByPortfoliosIdPaginated(
+        portfolioIds: string | string[],
         userId: string,
         pageOptionsDto: PageOptionsDto,
     ): Promise<PageDto<PopulatedTransaction>> {
         const { limit, skip } = pageOptionsDto;
+
+        const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
 
         const results = await this.db.query
             .selectFrom("transaction")
@@ -79,7 +81,7 @@ export class TransactionRepository {
                         .over()
                         .as("total_count"),
             ])
-            .where("transaction.portfolio_id", "=", portfolioId)
+            .where((eb) => eb("transaction.portfolio_id", "in", ids))
             .where("portfolio.user_id", "=", userId)
             .limit(limit)
             .offset(skip)

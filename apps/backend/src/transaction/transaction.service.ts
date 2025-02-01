@@ -14,12 +14,12 @@ export class TransactionService {
     }
 
     async findByPortfolioIdPaginated(
-        portfolioId: string,
+        id: string | string[],
         userId: string,
         pageOptionsDto: PageOptionsDto,
     ) {
-        return this.transactionRepository.findByPortfolioIdPaginated(
-            portfolioId,
+        return this.transactionRepository.findByPortfoliosIdPaginated(
+            id,
             userId,
             pageOptionsDto,
         );

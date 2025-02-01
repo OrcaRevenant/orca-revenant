@@ -85,88 +85,64 @@ export class PortfolioGroupRepository {
         }
     }
 
-    async findAll(userId: string): Promise<any[]> {
-        const result = await sql<any>`
-            WITH items AS (
-                -- Get all groups
-                SELECT 
-                id::text as id,
-                title,
-                color,
-                parent_id::text as parent_id,
-                'group'::text as type,
-                NULL::text as connection_name,
-                NULL::text as status,
-                NULL::boolean as disabled
-                FROM portfolio_group
-                WHERE user_id = ${userId}
-                
-                UNION ALL
-                
-                -- Get all portfolios
-                SELECT 
-                id::text as id,
-                title,
-                color,
-                group_id::text as parent_id,
-                'portfolio'::text as type,
-                connection_name,
-                status,
-                disabled
-                FROM portfolio
-                WHERE user_id = ${userId}
-            )
-            SELECT * FROM items
-            ORDER BY type DESC, id
-            `.execute(this.db.query);
+    async findAll(userId: string): Promise<any> {
+        // First, get all portfolio groups
+        const groups = await this.db.query
+            .selectFrom("portfolio_group")
+            .selectAll()
+            .where("user_id", "=", userId)
+            .execute();
 
-        return this.buildTree(result.rows);
+        // Get all portfolios
+        const portfolios = await this.db.query
+            .selectFrom("portfolio")
+            .selectAll()
+            .where("user_id", "=", userId)
+            .execute();
+
+        // Build the tree starting with root level items (parent_id is null)
+        return this.buildPortfolioTree(groups, portfolios, null);
     }
 
-    private buildTree(items: any[]): any[] {
-        const tree = [];
-        const childrenOf = {};
+    private buildPortfolioTree(
+        groups: any,
+        portfolios: any,
+        parentId: number | null,
+    ): any {
+        const items: any = [];
 
-        // First create a map of all parent ids to empty arrays
-        items.forEach((item) => {
-            childrenOf[item.id] = [];
-        });
-
-        // Then populate the arrays with children
-        items.forEach((item) => {
-            const node: any = {
-                id: item.id,
-                title: item.title,
-                color: item.color,
-                type: item.type,
+        // Add groups at current level
+        const currentLevelGroups = groups.filter((g) =>
+            g.parent_id === parentId
+        );
+        for (const group of currentLevelGroups) {
+            const groupItem: any = {
+                id: group.id,
+                title: group.title,
+                color: group.color,
+                type: "group",
+                children: this.buildPortfolioTree(groups, portfolios, group.id),
             };
+            items.push(groupItem);
+        }
 
-            if (item.type === "portfolio") {
-                node.connection_name = item.connection_name;
-                node.status = item.status;
-                node.disabled = item.disabled;
-            }
+        // Add portfolios at current level
+        const currentLevelPortfolios = portfolios.filter((p) =>
+            p.group_id === parentId
+        );
+        for (const portfolio of currentLevelPortfolios) {
+            const portfolioItem: any = {
+                id: portfolio.id,
+                title: portfolio.title,
+                color: portfolio.color,
+                type: "portfolio",
+                connection_name: portfolio.connection_name,
+                status: portfolio.status,
+                disabled: portfolio.disabled,
+            };
+            items.push(portfolioItem);
+        }
 
-            if (item.parent_id && childrenOf[item.parent_id]) {
-                childrenOf[item.parent_id].push(node);
-            } else {
-                tree.push(node);
-            }
-        });
-
-        // Finally, add children arrays to parent nodes
-        items.forEach((item) => {
-            if (childrenOf[item.id].length > 0) {
-                const parent = tree.find((node) => node.id === item.id) ||
-                    tree.flatMap((node) => childrenOf[node.id]).find((node) =>
-                        node.id === item.id
-                    );
-                if (parent) {
-                    parent.children = childrenOf[item.id];
-                }
-            }
-        });
-
-        return tree;
+        return items;
     }
 }

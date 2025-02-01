@@ -6,7 +6,7 @@ import {
     Health,
     Transaction,
 } from "@/connection/connection.abstract";
-import { MOCK_ACCOUNTS } from "./constants/config";
+import { MOCK_ACCOUNTS } from "./mock-connection.constant";
 
 @Injectable()
 export class MockConnectionService implements ConnectionAbstract {

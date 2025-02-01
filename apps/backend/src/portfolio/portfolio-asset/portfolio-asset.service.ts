@@ -14,23 +14,23 @@ export class PortfolioAssetService {
     }
 
     async getByPortfolioIdPaginated(
-        portfolioId: string,
+        id: string | string[],
         userId: string,
         pageOptionsDto: PageOptionsDto,
     ) {
         return this.portfolioAssetRepository.findByPortfolioIdPaginated(
-            portfolioId,
+            id,
             userId,
             pageOptionsDto,
         );
     }
 
     async getAllocation(
-        portfolioId: string,
+        id: string | string[],
         userId: string,
     ) {
         return this.portfolioAssetRepository.findAllocation(
-            portfolioId,
+            id,
             userId,
         );
     }

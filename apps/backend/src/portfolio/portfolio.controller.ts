@@ -54,14 +54,20 @@ export class PortfolioController {
         );
     }
 
-    @Get(":id")
+    @Get(":id/assets/allocation")
     @UseGuards(JwtGuard)
-    async getById(
+    async getAssetsAllocation(
         @Req() req: AuthUserRequest,
         @Param("id") id: string,
+        @Query("type") type: PortfolioType = "portfolio",
     ) {
         const userId = req.user.sub;
-        return this.portfolioService.getById(id, userId);
+
+        return this.portfolioService.getAssetAllocation(
+            id,
+            userId,
+            type,
+        );
     }
 
     @Get(":id/assets")
@@ -70,6 +76,7 @@ export class PortfolioController {
         @Req() req: AuthUserRequest,
         @Param("id") id: string,
         @Query() pageOptionsDto: PageOptionsDto,
+        @Query("type") type: PortfolioType = "portfolio",
     ) {
         const userId = req.user.sub;
 
@@ -77,7 +84,58 @@ export class PortfolioController {
             id,
             userId,
             pageOptionsDto,
+            type,
         );
+    }
+
+    @Get(":id/transactions")
+    @UseGuards(JwtGuard)
+    async getTransactions(
+        @Req() req: AuthUserRequest,
+        @Param("id") id: string,
+        @Query() pageOptionsDto: PageOptionsDto,
+        @Query("type") type: PortfolioType = "portfolio",
+    ) {
+        const userId = req.user.sub;
+
+        return this.portfolioService.getTransactions(
+            id,
+            userId,
+            pageOptionsDto,
+            type,
+        );
+    }
+
+    @Get(":id/balance/history")
+    @UseGuards(JwtGuard)
+    async getHistoricalPortfolioValue(
+        @Req() req: AuthUserRequest,
+        @Param("id") id: string,
+        @Query("startDate") startDate: string,
+        @Query("endDate") endDate: string,
+        @Query("resolution") resolution: "hourly" | "daily",
+        @Query("type") type: PortfolioType = "portfolio",
+    ) {
+        const userId = req.user.sub;
+
+        return this.portfolioService.getHistoricalBalance(
+            id,
+            userId,
+            new Date(startDate),
+            new Date(endDate),
+            resolution,
+            type,
+        );
+    }
+
+    @Get(":id")
+    @UseGuards(JwtGuard)
+    async getById(
+        @Req() req: AuthUserRequest,
+        @Param("id") id: string,
+    ) {
+        const userId = req.user.sub;
+        return this.portfolioService.getById(id, userId);
     }
 
     @Get(":id/status")
@@ -91,36 +149,6 @@ export class PortfolioController {
         return this.portfolioService.getStatus(
             id,
             userId,
-        );
-    }
-
-    @Get(":id/assets/allocation")
-    @UseGuards(JwtGuard)
-    async getAssetsAllocation(
-        @Req() req: AuthUserRequest,
-        @Param("id") id: string,
-    ) {
-        const userId = req.user.sub;
-
-        return this.portfolioService.getAssetAllocation(
-            id,
-            userId,
-        );
-    }
-
-    @Get(":id/transactions")
-    @UseGuards(JwtGuard)
-    async getTransactions(
-        @Req() req: AuthUserRequest,
-        @Param("id") id: string,
-        @Query() pageOptionsDto: PageOptionsDto,
-    ) {
-        const userId = req.user.sub;
-
-        return this.portfolioService.getTransactions(
-            id,
-            userId,
-            pageOptionsDto,
         );
     }
 
@@ -158,26 +186,6 @@ export class PortfolioController {
         const userId = req.user.sub;
 
         return this.portfolioService.sync(id, userId);
-    }
-
-    @Get(":id/balance/history")
-    @UseGuards(JwtGuard)
-    async getHistoricalPortfolioValue(
-        @Req() req: AuthUserRequest,
-        @Param("id") id: string,
-        @Query("startDate") startDate: string,
-        @Query("endDate") endDate: string,
-        @Query("resolution") resolution: "hourly" | "daily",
-    ) {
-        const userId = req.user.sub;
-
-        return this.portfolioService.getHistoricalBalance(
-            id,
-            userId,
-            new Date(startDate),
-            new Date(endDate),
-            resolution,
-        );
     }
 
     // TODO:: should move to asset module

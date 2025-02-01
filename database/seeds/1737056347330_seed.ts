@@ -1,5 +1,5 @@
 import { Kysely, sql } from "kysely";
-import { MOCK_ACCOUNTS } from "../../apps/backend/src/mock-connection/constants/config";
+import { MOCK_ACCOUNTS } from "../../apps/backend/src/mock-connection/mock-connection.constant";
 
 export async function seed(db: Kysely<any>): Promise<void> {
 	// Insert into auth.users

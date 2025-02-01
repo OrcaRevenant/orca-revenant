@@ -2,18 +2,18 @@ import { Injectable } from "@nestjs/common";
 import { PortfolioRepository } from "./portfolio.repository";
 import { CreatePortfolioDto, UpdatePortfolioDto } from "./dto";
 import { PortfolioSyncService } from "@/portfolio/portfolio-sync/portfolio-sync.service";
-import { TransactionRepository } from "@/transaction/transaction.repository";
 import { PageOptionsDto } from "@/pagination/dto";
 import { Portfolio, PortfolioType } from "./portfolio.types";
 import { PortfolioAssetService } from "./portfolio-asset/portfolio-asset.service";
 import { PortfolioGroupService } from "./portfolio-group/portfolio-group.service";
+import { TransactionService } from "@/transaction/transaction.service";
 
 @Injectable()
 export class PortfolioService {
     constructor(
         private readonly portfolioRepository: PortfolioRepository,
         private readonly portfolioSyncService: PortfolioSyncService,
-        private readonly transactionRepository: TransactionRepository,
+        private readonly transactionService: TransactionService,
         private readonly portfolioAssetService: PortfolioAssetService,
         private readonly portfolioGroupService: PortfolioGroupService,
     ) {
@@ -32,7 +32,7 @@ export class PortfolioService {
         type: PortfolioType,
     ): Promise<{ balance: number }> {
         const portfolioIds = await this.getPortfolioIds(id, userId, type);
-        const balance = await this.portfolioRepository.findPortfolioBalance(
+        const balance = await this.portfolioRepository.findBalance(
             portfolioIds,
             userId,
         );
@@ -40,15 +40,59 @@ export class PortfolioService {
         return { balance };
     }
 
+    async getAssets(
+        id: string,
+        userId: string,
+        pageOptionsDto: PageOptionsDto,
+        type: PortfolioType,
+    ) {
+        const portfolioIds = await this.getPortfolioIds(id, userId, type);
+        return this.portfolioAssetService.getByPortfolioIdPaginated(
+            portfolioIds,
+            userId,
+            pageOptionsDto,
+        );
+    }
+
+    async getAssetAllocation(
+        id: string,
+        userId: string,
+        type: PortfolioType,
+    ) {
+        const portfolioIds = await this.getPortfolioIds(id, userId, type);
+        return await this.portfolioAssetService.getAllocation(
+            portfolioIds,
+            userId,
+        );
+    }
+
+    async getTransactions(
+        id: string,
+        userId: string,
+        pageOptionsDto: PageOptionsDto,
+        type: PortfolioType,
+    ) {
+        const portfolioIds = await this.getPortfolioIds(id, userId, type);
+
+        return this.transactionService.findByPortfolioIdPaginated(
+            portfolioIds,
+            userId,
+            pageOptionsDto,
+        );
+    }
+
     async getHistoricalBalance(
-        portfolioId: string,
+        id: string,
         userId: string,
         startDate: Date,
         endDate: Date,
         resolution: "hourly" | "daily",
+        type: PortfolioType,
     ) {
+        const portfolioIds = await this.getPortfolioIds(id, userId, type);
+
         return this.portfolioRepository.findHistoricalBalance(
-            portfolioId,
+            portfolioIds,
             userId,
             startDate,
             endDate,
@@ -85,48 +129,6 @@ export class PortfolioService {
             userId,
             startDate,
             endDate,
-        );
-    }
-
-    async getAssetAllocation(
-        portfolioId: string,
-        userId: string,
-    ) {
-        const assets = await this.portfolioAssetService.getAllocation(
-            portfolioId,
-            userId,
-        );
-
-        if (!assets) {
-            throw new Error(
-                `No assets found for portfolio with ID ${portfolioId}`,
-            );
-        }
-
-        return assets;
-    }
-
-    async getAssets(
-        id: string,
-        userId: string,
-        pageOptionsDto: PageOptionsDto,
-    ) {
-        return this.portfolioAssetService.getByPortfolioIdPaginated(
-            id,
-            userId,
-            pageOptionsDto,
-        );
-    }
-
-    async getTransactions(
-        id: string,
-        userId: string,
-        pageOptionsDto: PageOptionsDto,
-    ) {
-        return this.transactionRepository.findByPortfolioIdPaginated(
-            id,
-            userId,
-            pageOptionsDto,
         );
     }
 
