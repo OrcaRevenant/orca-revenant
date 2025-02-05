@@ -18,10 +18,13 @@ export class PortfolioAssetService {
         userId: string,
         pageOptionsDto: PageOptionsDto,
     ) {
+        const calculationFrom = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
         return this.portfolioAssetRepository.findByPortfolioIdPaginated(
             id,
             userId,
             pageOptionsDto,
+            calculationFrom.toISOString(),
         );
     }
 
@@ -29,7 +32,7 @@ export class PortfolioAssetService {
         id: string | string[],
         userId: string,
     ) {
-        return this.portfolioAssetRepository.findAllocation(
+        return this.portfolioAssetRepository.findAssetAllocation(
             id,
             userId,
         );

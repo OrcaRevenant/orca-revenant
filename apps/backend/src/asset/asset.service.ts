@@ -8,4 +8,18 @@ export class AssetService {
     async findAll() {
         return this.assetRepository.findAll();
     }
+
+    async getAssetHistory(
+        symbol: string,
+        startDate: Date,
+        endDate: Date,
+        resolution: "hourly" | "daily",
+    ) {
+        return this.assetRepository.findAssetPriceHistory(
+            symbol,
+            startDate,
+            endDate,
+            resolution,
+        );
+    }
 }

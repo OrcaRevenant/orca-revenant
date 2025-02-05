@@ -47,7 +47,7 @@ export class PortfolioSyncService {
 
         try {
             await Promise.all([
-                this.syncPortfolioAssets(portfolio, supportedAssets),
+                this.syncAssets(portfolio, supportedAssets),
                 this.syncTransactions(portfolio, supportedAssets),
             ]);
 
@@ -77,7 +77,7 @@ export class PortfolioSyncService {
         );
     }
 
-    private async syncPortfolioAssets(
+    private async syncAssets(
         portfolio: Portfolio,
         supportedAssets: Asset[],
     ) {

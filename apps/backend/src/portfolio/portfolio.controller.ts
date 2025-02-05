@@ -70,6 +70,17 @@ export class PortfolioController {
         );
     }
 
+    @Get(":id/allocation")
+    @UseGuards(JwtGuard)
+    async getAllocation(
+        @Req() req: AuthUserRequest,
+        @Param("id") id: string,
+        @Query("type") type: PortfolioType = "portfolio",
+    ) {
+        const userId = req.user.sub;
+        return this.portfolioService.getAllocation(id, userId, type);
+    }
+
     @Get(":id/assets")
     @UseGuards(JwtGuard)
     async getAssets(
@@ -188,28 +199,6 @@ export class PortfolioController {
         return this.portfolioService.sync(id, userId);
     }
 
-    // TODO:: should move to asset module
-    @Get(":id/assets/:asset/history")
-    @UseGuards(JwtGuard)
-    async getAssetChart(
-        @Req() req: AuthUserRequest,
-        @Param("id") id: string,
-        @Param("asset") asset: string,
-        @Query("startDate") startDate: string,
-        @Query("endDate") endDate: string,
-        @Query("resolution") resolution: "hourly" | "daily",
-    ) {
-        const userId = req.user.sub;
-        return this.portfolioService.getAssetPriceHistoryChart(
-            id,
-            userId,
-            asset,
-            new Date(startDate),
-            new Date(endDate),
-            resolution,
-        );
-    }
-
     @Get(":id/asset/performance")
     @UseGuards(JwtGuard)
     async getAssetPerformance(
@@ -217,6 +206,7 @@ export class PortfolioController {
         @Param("id") id: string,
         @Query("startDate") startDate: string,
         @Query("endDate") endDate: string,
+        @Query("type") type: PortfolioType = "portfolio",
     ) {
         const userId = req.user.sub;
 
@@ -225,6 +215,7 @@ export class PortfolioController {
             userId,
             new Date(startDate),
             new Date(endDate),
+            type,
         );
     }
 

@@ -32,7 +32,7 @@ export class BackfillProcessor extends WorkerHost {
     const { asset, from, to, resolution } = job.data;
 
     console.log(
-      `Backfilling for ${asset} from ${from} to ${to}`,
+      `Backfilling for ${asset} from ${from} to ${to} with the resolution of ${resolution} minutes`,
     );
 
     const historicalPrices = await this.priceProvider.getAssetHistoricalPrice(

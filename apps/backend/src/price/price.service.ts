@@ -31,22 +31,24 @@ export class PriceService implements OnModuleInit {
             await this.backfillService.queue.drain();
             await this.backfillService.queue.obliterate({ force: true });
             console.log(`Queue drained successfully!`);
-            await this.performeBackfill();
+            await this.performBackfill();
+            // Optionally, start the cron job after the backfill is complete.
+            this.addUpdatePriceCronJob();
         } catch (error) {
             console.error("Error during onModuleInit:", error);
         }
     }
 
     private addUpdatePriceCronJob() {
-        const job = new CronJob(`*/2 * * * *`, async () => {
+        const job = new CronJob(this.config.updateCron, async () => {
             try {
                 await this.updateAssetsPrice();
             } catch (error) {
                 console.error("Error in dynamically added cron job:", error);
             }
         });
-
         this.schedulerRegistry.addCronJob("updateAssetsPrice", job);
+        job.start();
     }
 
     private async updateAssetsPrice() {
@@ -68,12 +70,10 @@ export class PriceService implements OnModuleInit {
         }
     }
 
-    async performeBackfill() {
+    async performBackfill() {
         const symbols = await this.getAssetSymbols();
-
-        const endTrackingDate = this.currentDate.startOf(
-            "minute",
-        );
+        const endTrackingDate = this.currentDate.startOf("minute");
+        const stepMinutes = this.config.backfillStep;
 
         await Promise.all(
             symbols.map(async (symbol) => {
@@ -86,7 +86,7 @@ export class PriceService implements OnModuleInit {
                     "minutes",
                 );
 
-                if (gapMinutes <= 2) {
+                if (gapMinutes <= stepMinutes) {
                     console.log(
                         `No backfill needed for ${symbol}. Gap: ${gapMinutes} minutes.`,
                     );
@@ -94,18 +94,20 @@ export class PriceService implements OnModuleInit {
                 }
 
                 console.log(
-                    `Adding backfill job for ${symbol}: ${startTrackingFromDate} to ${endTrackingDate}`,
+                    `Adding backfill job for ${symbol}: ${startTrackingFromDate.toISOString()} to ${endTrackingDate.toISOString()}`,
                 );
 
+                // Add a backfill job. Notice how the step value is taken from config.
                 await this.backfillService.addBackfillJob(
                     symbol,
-                    startTrackingFromDate.add(2, `minutes`).toDate(),
+                    startTrackingFromDate.add(stepMinutes, "minutes").toDate(),
                     endTrackingDate.toDate(),
-                    2,
+                    stepMinutes,
                 );
             }),
         );
     }
+
     private async getAssetSymbols(): Promise<string[]> {
         const assets = await this.assetRepository.findAll();
         return assets.map((asset) => asset.symbol);
@@ -118,7 +120,11 @@ export class PriceService implements OnModuleInit {
             asset,
         );
         if (!lastPriceTime) {
-            return this.currentDate.subtract(4, "year").startOf("minute");
+            // Use the configured initial lookback years instead of hardcoding "4"
+            return this.currentDate.subtract(
+                this.config.initialLookbackYears,
+                "year",
+            ).startOf("minute");
         }
 
         const lastPriceDate = dayjs(lastPriceTime);

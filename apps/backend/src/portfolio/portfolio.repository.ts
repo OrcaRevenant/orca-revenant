@@ -159,8 +159,10 @@ export class PortfolioRepository {
     portfolioIds: string[],
     userId: string,
   ) {
+    const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
+
     // Verify ownership of all portfolios
-    await this.isOwner(portfolioIds, userId);
+    await this.isOwner(ids, userId);
 
     const result = await sql<
       { id: string; title: string; balance: number; percentage: number }
@@ -179,7 +181,7 @@ export class PortfolioRepository {
                     ORDER BY time DESC
                     LIMIT 1
                 ) price ON true
-                WHERE p.id = ANY(${portfolioIds})
+                WHERE p.id = ANY(${ids})
                 GROUP BY p.id, p.title
             ),
             total_balance AS (
@@ -204,7 +206,59 @@ export class PortfolioRepository {
       percentage: Number(row.percentage),
     }));
   }
+  async findPortfolioAllocation(
+    portfolioIds: string | string[],
+    userId: string,
+  ) {
+    const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
 
+    await this.isOwner(ids, userId);
+
+    const result = await sql<{
+      id: string;
+      title: string;
+      balance: string;
+      percentage: string;
+    }>`
+        WITH portfolio_balances AS (
+            SELECT 
+                p.id,
+                p.title,
+                COALESCE(SUM(pa.amount * price.price), 0) as balance
+            FROM portfolio p
+            LEFT JOIN portfolio_assets pa ON pa.portfolio_id = p.id
+            LEFT JOIN LATERAL (
+                SELECT price
+                FROM price
+                WHERE asset = pa.asset
+                ORDER BY time DESC
+                LIMIT 1
+            ) price ON true
+            WHERE p.id = ANY(${ids})
+            GROUP BY p.id, p.title
+        ),
+        total_balance AS (
+            SELECT SUM(balance) as total FROM portfolio_balances
+        )
+        SELECT 
+            pb.id,
+            pb.title,
+            pb.balance::text,
+            (pb.balance / NULLIF(tb.total, 0) * 100)::text as percentage
+        FROM portfolio_balances pb
+        CROSS JOIN total_balance tb
+        ORDER BY pb.balance DESC;
+    `.execute(this.db.query);
+
+    return result.rows.map((row) => ({
+      portfolio: {
+        id: row.id,
+        title: row.title,
+      },
+      balance: Number(row.balance),
+      percentage: Number(row.percentage),
+    }));
+  }
   async findBalance(
     portfolioIds: UniqueIdentifier | UniqueIdentifier[],
     userId: UniqueIdentifier,
@@ -244,7 +298,7 @@ export class PortfolioRepository {
     return Number((result.rows[0] as any)?.total_value || 0);
   }
 
-  async findHistoricalBalance(
+  async findBalanceHistory(
     portfolioIds: string | string[],
     userId: string,
     startDate: Date,
@@ -351,55 +405,95 @@ export class PortfolioRepository {
   }
 
   async findBestPerformingAsset(
-    portfolioId: string,
+    portfolioId: string | string[],
     userId: string,
     startDate: Date,
     endDate: Date,
-  ) {
-    await this.isOwner(portfolioId, userId);
+  ): Promise<{
+    asset: {
+      symbol: string;
+      name: string;
+      logo: string;
+    };
+    start_price: number;
+    current_price: number;
+    price_change: number;
+    percentage_change: number;
+    total_value: number;
+    pnl: number;
+    amount: number;
+  }> {
+    const ids = Array.isArray(portfolioId) ? portfolioId : [portfolioId];
 
-    const result = await sql`
-          WITH asset_prices AS (
+    // Verify ownership of all portfolios
+    await this.isOwner(ids, userId);
+
+    const result = await sql<{
+      asset: string;
+      name: string;
+      logo: string;
+      amount: string;
+      start_price: string;
+      current_price: string;
+      price_change: string;
+      percentage_change: string;
+      total_value: string;
+      pnl: string;
+    }>`
+        WITH portfolio_assets_aggregated AS (
             SELECT 
-              pa.asset,
-              pa.amount,
-              a.name,
-              a.logo,
-              a.alt_names,
-              first_price.price as start_price,
-              last_price.price as current_price,
-              (last_price.price - first_price.price) as price_change,
-              ((last_price.price - first_price.price) / NULLIF(first_price.price, 0) * 100) as percentage_change,
-              (pa.amount * last_price.price) as total_value,
-              (pa.amount * (last_price.price - first_price.price)) as pnl
+                pa.asset,
+                SUM(pa.amount) as amount
             FROM portfolio_assets pa
-            INNER JOIN asset a ON a.symbol = pa.asset
+            WHERE pa.portfolio_id = ANY(${ids})
+            GROUP BY pa.asset
+        ),
+        asset_prices AS (
+            SELECT 
+                paa.asset,
+                paa.amount,
+                a.name,
+                a.logo,
+                a.alt_names,
+                first_price.price as start_price,
+                last_price.price as current_price,
+                (last_price.price - first_price.price) as price_change,
+                ((last_price.price - first_price.price) / NULLIF(first_price.price, 0) * 100) as percentage_change,
+                (paa.amount * last_price.price) as total_value,
+                (paa.amount * (last_price.price - first_price.price)) as pnl
+            FROM portfolio_assets_aggregated paa
+            INNER JOIN asset a ON a.symbol = paa.asset
             LEFT JOIN LATERAL (
-              SELECT price
-              FROM price p
-              WHERE p.asset = pa.asset
-              AND p.time >= ${startDate}
-              ORDER BY p.time ASC
-              LIMIT 1
+                SELECT price
+                FROM price p
+                WHERE p.asset = paa.asset
+                AND p.time >= ${startDate}
+                ORDER BY p.time ASC
+                LIMIT 1
             ) first_price ON true
             LEFT JOIN LATERAL (
-              SELECT price
-              FROM price p
-              WHERE p.asset = pa.asset
-              AND p.time <= ${endDate}
-              ORDER BY p.time DESC
-              LIMIT 1
+                SELECT price
+                FROM price p
+                WHERE p.asset = paa.asset
+                AND p.time <= ${endDate}
+                ORDER BY p.time DESC
+                LIMIT 1
             ) last_price ON true
-            WHERE pa.portfolio_id = ${portfolioId}
-            AND pa.amount > 0
-          )
-          SELECT *
-          FROM asset_prices
-          ORDER BY percentage_change DESC
-          LIMIT 1;
-        `.execute(this.db.query);
+            WHERE paa.amount > 0
+        )
+        SELECT *
+        FROM asset_prices
+        ORDER BY percentage_change DESC
+        LIMIT 1;
+    `.execute(this.db.query);
 
-    const asset = result.rows[0] as any;
+    if (result.rows.length === 0) {
+      throw new NotFoundException(
+        "No assets found for the specified portfolios",
+      );
+    }
+
+    const asset = result.rows[0];
     return {
       asset: {
         symbol: asset.asset,
@@ -418,14 +512,11 @@ export class PortfolioRepository {
 
   async findAssetPriceHistory(
     portfolioId: string,
-    userId: string,
     assetSymbol: string,
     startDate: Date,
     endDate: Date,
     resolution: "hourly" | "daily" | "weekly" | "monthly",
   ) {
-    await this.isOwner(portfolioId, userId);
-
     const interval = this.getResolutionInterval(resolution);
 
     const result = await sql`

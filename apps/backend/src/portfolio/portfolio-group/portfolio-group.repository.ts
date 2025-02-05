@@ -85,64 +85,74 @@ export class PortfolioGroupRepository {
         }
     }
 
-    async findAll(userId: string): Promise<any> {
-        // First, get all portfolio groups
+    async findAll(userId: string) {
+        // Get portfolio values and asset counts with overall totals
+        const stats = await sql`
+            WITH portfolio_values AS (
+                SELECT 
+                    pa.portfolio_id,
+                    pa.asset,
+                    SUM(pa.amount * p.price) as total_value
+                FROM portfolio_assets pa
+                LEFT JOIN LATERAL (
+                    SELECT price
+                    FROM price
+                    WHERE asset = pa.asset
+                    ORDER BY time DESC
+                    LIMIT 1
+                ) p ON true
+                GROUP BY pa.portfolio_id, pa.asset
+            ),
+            portfolio_stats AS (
+                SELECT 
+                    p.id,
+                    p.title,
+                    p.color,
+                    p.connection_name,
+                    p.status,
+                    p.disabled,
+                    p.group_id,
+                    COALESCE(SUM(pv.total_value), 0) as value,
+                    COUNT(DISTINCT pv.asset) as asset_count,
+                    array_agg(DISTINCT pv.asset) as assets
+                FROM portfolio p
+                LEFT JOIN portfolio_values pv ON p.id = pv.portfolio_id
+                WHERE p.user_id = ${userId}
+                GROUP BY p.id, p.title, p.color, p.connection_name, p.status, p.disabled, p.group_id
+            ),
+            unique_assets AS (
+                SELECT DISTINCT asset
+                FROM portfolio_values pv
+                INNER JOIN portfolio p ON p.id = pv.portfolio_id
+                WHERE p.user_id = ${userId}
+            ),
+            global_stats AS (
+                SELECT 
+                    SUM(value) as total_value,
+                    (SELECT COUNT(*) FROM unique_assets) as total_unique_assets,
+                    COUNT(*) as total_portfolios
+                FROM portfolio_stats
+            )
+            SELECT 
+                jsonb_build_object(
+                    'portfolios', (SELECT jsonb_agg(ps.*) FROM portfolio_stats ps),
+                    'global_stats', (SELECT row_to_json(gs.*) FROM global_stats gs)
+                ) as result
+        `.execute(this.db.query);
+
+        // Get all groups
         const groups = await this.db.query
             .selectFrom("portfolio_group")
             .selectAll()
             .where("user_id", "=", userId)
             .execute();
 
-        // Get all portfolios
-        const portfolios = await this.db.query
-            .selectFrom("portfolio")
-            .selectAll()
-            .where("user_id", "=", userId)
-            .execute();
+        const { portfolios, global_stats } = (stats.rows[0] as any).result;
 
-        // Build the tree starting with root level items (parent_id is null)
-        return this.buildPortfolioTree(groups, portfolios, null);
-    }
-
-    private buildPortfolioTree(
-        groups: any,
-        portfolios: any,
-        parentId: number | null,
-    ): any {
-        const items: any = [];
-
-        // Add groups at current level
-        const currentLevelGroups = groups.filter((g) =>
-            g.parent_id === parentId
-        );
-        for (const group of currentLevelGroups) {
-            const groupItem: any = {
-                id: group.id,
-                title: group.title,
-                color: group.color,
-                type: "group",
-                children: this.buildPortfolioTree(groups, portfolios, group.id),
-            };
-            items.push(groupItem);
-        }
-
-        // Add portfolios at current level
-        const currentLevelPortfolios = portfolios.filter((p) =>
-            p.group_id === parentId
-        );
-        for (const portfolio of currentLevelPortfolios) {
-            const portfolioItem: any = {
-                id: portfolio.id,
-                title: portfolio.title,
-                color: portfolio.color,
-                type: "portfolio",
-                connection_name: portfolio.connection_name,
-                status: portfolio.status,
-                disabled: portfolio.disabled,
-            };
-            items.push(portfolioItem);
-        }
-
-        return items;
+        return {
+            groups,
+            portfolios,
+            global_stats,
+        };
     }
 }

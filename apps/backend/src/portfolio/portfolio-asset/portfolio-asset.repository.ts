@@ -2,148 +2,177 @@ import { DatabaseService } from "@/database/database.service";
 import { PageDto, PageMetaDto, PageOptionsDto } from "@/pagination/dto";
 import { Injectable } from "@nestjs/common";
 import {
-    PopulatedPortfolioAsset,
-    PortfolioAsset,
+  PopulatedPortfolioAsset,
+  PortfolioAsset,
 } from "./portfolio-asset.types";
 import { sql } from "kysely";
 
 @Injectable()
 export class PortfolioAssetRepository {
-    constructor(private readonly db: DatabaseService) {}
+  constructor(private readonly db: DatabaseService) {}
 
-    async insert(
-        assets: PortfolioAsset[],
-    ): Promise<boolean> {
-        await this.db.query
-            .insertInto("portfolio_assets")
-            .values(assets)
-            .onConflict((oc) =>
-                oc.columns(["asset", "portfolio_id"]).doUpdateSet({
-                    asset: (eb) => eb.ref("excluded.asset"),
-                })
-            )
-            .execute();
+  private serialize(result: any): PopulatedPortfolioAsset {
+    return {
+      amount: result.amount,
+      asset: result.asset,
+      portfolio_id: result.portfolio_id,
+      value: result.value,
+      price_per_unit: result.price_per_unit,
+      pnl: result.pnl || 0,
+      pnl_percentage: result.pnl_percentage || 0,
+      change: result.change,
+      change_percentage: result.change_percentage,
+    };
+  }
 
-        return true;
-    }
+  async insert(
+    assets: PortfolioAsset[],
+  ): Promise<boolean> {
+    await this.db.query
+      .insertInto("portfolio_assets")
+      .values(assets)
+      .onConflict((oc) =>
+        oc.columns(["asset", "portfolio_id"]).doUpdateSet({
+          amount: (eb) => eb.ref("excluded.amount"),
+        })
+      )
+      .execute();
 
-    private serialize(result: any): PopulatedPortfolioAsset {
-        return {
-            amount: result.amount,
-            asset: result.asset,
-            portfolio_id: result.portfolio_id,
-            value: result.value,
-            price_per_unit: result.price_per_unit,
-        };
-    }
+    return true;
+  }
 
-    async findByPortfolioIdPaginated(
-        portfolioIds: string | string[],
-        userId: string,
-        pageOptionsDto: PageOptionsDto,
-    ): Promise<PageDto<PortfolioAsset>> {
-        const { limit, skip } = pageOptionsDto;
-        const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
+  async findByPortfolioIdPaginated(
+    portfolioIds: string | string[],
+    userId: string,
+    pageOptionsDto: PageOptionsDto,
+    calculationFrom: string,
+  ): Promise<PageDto<PortfolioAsset>> {
+    const { limit, skip } = pageOptionsDto;
+    const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
 
-        const results = await sql<{
-            asset: string;
-            amount: string;
-            symbol: string;
-            name: string;
-            logo: string;
-            price_per_unit: string;
-            value: string;
-            total_count: number;
-        }>`
-            WITH authorized_portfolios AS (
-                -- First verify ownership of all portfolios
-                SELECT id
-                FROM portfolio
-                WHERE id = ANY(${ids})
-                AND user_id = ${userId}
-            ),
-            aggregated_assets AS (
-                -- Aggregate assets across portfolios
-                SELECT 
-                    pa.asset,
-                    SUM(pa.amount) as amount,
-                    a.symbol,
-                    a.name,
-                    a.logo,
-                    p.price as price_per_unit,
-                    SUM(pa.amount * p.price) as value
-                FROM portfolio_assets pa
-                INNER JOIN authorized_portfolios ap ON pa.portfolio_id = ap.id
-                INNER JOIN asset a ON a.symbol = pa.asset
-                LEFT JOIN LATERAL (
-                    SELECT price
-                    FROM price
-                    WHERE asset = pa.asset
-                    ORDER BY time DESC
-                    LIMIT 1
-                ) p ON true
-                GROUP BY 
-                    pa.asset,
-                    a.symbol,
-                    a.name,
-                    a.logo,
-                    p.price
-            ),
-            counted_assets AS (
-                -- Add row count for pagination
-                SELECT 
-                    *,
-                    COUNT(*) OVER() as total_count
-                FROM aggregated_assets
-                ORDER BY value DESC
-                LIMIT ${limit}
-                OFFSET ${skip}
-            )
-            SELECT 
-                asset,
-                amount::text,
-                symbol,
-                name,
-                logo,
-                price_per_unit::text,
-                value::text,
-                total_count::integer
-            FROM counted_assets;
-        `.execute(this.db.query);
+    const results = await sql<{
+      asset: string;
+      amount: string;
+      symbol: string;
+      name: string;
+      logo: string;
+      price_per_unit: string;
+      value: string;
+      change: string;
+      change_percentage: string | null;
+      total_count: number;
+    }>`
+      WITH authorized_portfolios AS (
+        -- Verify ownership of all portfolios
+        SELECT id
+        FROM portfolio
+        WHERE id = ANY(${ids})
+          AND user_id = ${userId}
+      ),
+      aggregated_assets AS (
+        -- Aggregate current holdings across portfolios
+        SELECT 
+          pa.asset,
+          SUM(pa.amount) AS amount
+        FROM portfolio_assets pa
+        INNER JOIN authorized_portfolios ap 
+          ON pa.portfolio_id = ap.id
+        GROUP BY pa.asset
+      ),
+      asset_details AS (
+        -- For each asset, retrieve the current price and the price at the given calculation time
+        SELECT 
+          aa.asset,
+          aa.amount,
+          a.symbol,
+          a.name,
+          a.logo,
+          (
+            SELECT price
+            FROM price
+            WHERE asset = aa.asset
+            ORDER BY time DESC
+            LIMIT 1
+          ) AS price_per_unit,
+          (
+            SELECT price
+            FROM price
+            WHERE asset = aa.asset
+              AND time <= ${calculationFrom}::timestamptz
+            ORDER BY time DESC
+            LIMIT 1
+          ) AS price_at_calculation
+        FROM aggregated_assets aa
+        INNER JOIN asset a 
+          ON a.symbol = aa.asset
+      )
+      SELECT 
+        ad.asset,
+        ad.amount::text,
+        ad.symbol,
+        ad.name,
+        ad.logo,
+        ad.price_per_unit::text,
+        -- Current total value = current price * amount
+        (ad.amount * ad.price_per_unit)::text AS value,
+        -- Price change: current price - price at the calculation time
+        (ad.price_per_unit - ad.price_at_calculation)::text AS change,
+        -- Price change percentage: (current price - price at calculation) / price at calculation * 100
+        CASE 
+          WHEN ad.price_at_calculation IS NOT NULL AND ad.price_at_calculation != 0 
+          THEN (((ad.price_per_unit - ad.price_at_calculation) / ad.price_at_calculation) * 100)::text
+          ELSE NULL
+        END AS change_percentage,
+        COUNT(*) OVER() AS total_count
+      FROM asset_details ad
+      ORDER BY (ad.amount * ad.price_per_unit) DESC
+      LIMIT ${limit}
+      OFFSET ${skip}
+    `.execute(this.db.query);
 
-        const totalCount = results.rows.length > 0
-            ? Number(results.rows[0].total_count)
-            : 0;
+    const totalCount = results.rows.length > 0
+      ? Number(results.rows[0].total_count)
+      : 0;
+    const pageMetaDto = new PageMetaDto({
+      itemCount: totalCount,
+      pageOptionsDto,
+    });
 
-        const pageMetaDto = new PageMetaDto({
-            itemCount: totalCount,
-            pageOptionsDto,
-        });
+    return new PageDto<PortfolioAsset>(
+      results.rows.map((v) =>
+        this.serialize({
+          ...v,
+          asset: {
+            symbol: v.symbol,
+            logo: v.logo,
+            name: v.name,
+          },
+          value: Number(v.value),
+          price_per_unit: Number(v.price_per_unit),
+          change: Number(v.change),
+          change_percentage: +v.change_percentage,
+        })
+      ),
+      pageMetaDto,
+    );
+  }
 
-        return new PageDto<PortfolioAsset>(
-            results.rows.map((v) =>
-                this.serialize({
-                    ...v,
-                    asset: {
-                        symbol: v.symbol,
-                        logo: v.logo,
-                        name: v.name,
-                    },
-                    value: Number(v.value),
-                    price_per_unit: Number(v.price_per_unit),
-                })
-            ),
-            pageMetaDto,
-        );
-    }
+  async findAssetAllocation(
+    portfolioIds: string | string[],
+    userId: string,
+  ) {
+    const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
 
-    async findAllocation(
-        portfolioIds: string | string[],
-        userId: string,
-    ) {
-        const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
-
-        const records = await sql`
+    const records = await sql<
+      {
+        symbol: string;
+        name: string;
+        logo: string;
+        amount: number;
+        value: number;
+        allocation_percentage: number;
+      }
+    >`
             WITH authorized_portfolios AS (
                 -- Verify ownership of all portfolios
                 SELECT id
@@ -190,17 +219,17 @@ export class PortfolioAssetRepository {
             ORDER BY pwp.value DESC;
         `.execute(this.db.query);
 
-        const assets = records.rows.map((row: any) => ({
-            asset: {
-                symbol: row.symbol,
-                name: row.name,
-                logo: row.logo,
-            },
-            amount: Number(row.amount),
-            value: Number(row.value),
-            percentage: Number(row.allocation_percentage),
-        }));
+    const assets = records.rows.map((row) => ({
+      asset: {
+        symbol: row.symbol,
+        name: row.name,
+        logo: row.logo,
+      },
+      amount: Number(row.amount),
+      value: Number(row.value),
+      percentage: Number(row.allocation_percentage),
+    }));
 
-        return assets;
-    }
+    return assets;
+  }
 }

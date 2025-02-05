@@ -60,7 +60,19 @@ export class PortfolioService {
         type: PortfolioType,
     ) {
         const portfolioIds = await this.getPortfolioIds(id, userId, type);
-        return await this.portfolioAssetService.getAllocation(
+        return this.portfolioAssetService.getAllocation(
+            portfolioIds,
+            userId,
+        );
+    }
+
+    async getAllocation(
+        id: string,
+        userId: string,
+        type: PortfolioType,
+    ) {
+        const portfolioIds = await this.getPortfolioIds(id, userId, type);
+        return this.portfolioRepository.findPortfolioAllocation(
             portfolioIds,
             userId,
         );
@@ -91,7 +103,7 @@ export class PortfolioService {
     ) {
         const portfolioIds = await this.getPortfolioIds(id, userId, type);
 
-        return this.portfolioRepository.findHistoricalBalance(
+        return this.portfolioRepository.findBalanceHistory(
             portfolioIds,
             userId,
             startDate,
@@ -100,8 +112,24 @@ export class PortfolioService {
         );
     }
 
+    async getAssetPerformance(
+        id: string,
+        userId: string,
+        startDate: Date,
+        endDate: Date,
+        type: PortfolioType,
+    ) {
+        const portfolioIds = await this.getPortfolioIds(id, userId, type);
+
+        return this.portfolioRepository.findBestPerformingAsset(
+            portfolioIds,
+            userId,
+            startDate,
+            endDate,
+        );
+    }
+
     async getAssetPriceHistoryChart(
-        portfolioId: string,
         userId: string,
         asset: string,
         startDate: Date,
@@ -109,26 +137,11 @@ export class PortfolioService {
         resolution: "hourly" | "daily",
     ) {
         return this.portfolioRepository.findAssetPriceHistory(
-            portfolioId,
             userId,
             asset,
             startDate,
             endDate,
             resolution,
-        );
-    }
-
-    async getAssetPerformance(
-        portfolioId: string,
-        userId: string,
-        startDate: Date,
-        endDate: Date,
-    ) {
-        return this.portfolioRepository.findBestPerformingAsset(
-            portfolioId,
-            userId,
-            startDate,
-            endDate,
         );
     }
 

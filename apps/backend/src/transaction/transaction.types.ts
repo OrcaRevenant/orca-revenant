@@ -12,14 +12,12 @@ export type Transaction = {
   value: number | null;
 };
 
-export type PopulatedTransaction = {
-  amount: number | null;
-  asset: Pick<Asset, `name` | `symbol` | `logo`>;
-  hash: string;
-  id: string;
-  portfolio: Pick<PopulatedPortfolio, `title` | `connection` | `id`>;
-  time: string;
-  type: string;
-  value: number | null;
-  portfolio_total_value: number;
-};
+export type PopulatedTransaction =
+  & Omit<Transaction, `asset` | `portfolio_id`>
+  & {
+    asset: Pick<Asset, `name` | `symbol` | `logo`>;
+    portfolio: Pick<PopulatedPortfolio, `title` | `connection` | `id`>;
+    portfolio_total_value: number;
+    pnl: number;
+    pnl_percentage: number;
+  };

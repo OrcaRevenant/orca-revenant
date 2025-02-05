@@ -7,4 +7,8 @@ export type PortfolioAsset = {
 export type PopulatedPortfolioAsset = PortfolioAsset & {
     value: number;
     price_per_unit: number;
+    pnl: number;
+    pnl_percentage: number;
+    change: number;
+    change_percentage: number;
 };
