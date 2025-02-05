@@ -1,10 +1,10 @@
-export type Reseponse<T> = {
+export type Response<T> = {
     status: string;
 } & T;
 
-export type PaginatedResponse<T> = Reseponse<{ hasNext: boolean } & T>;
+export type PaginatedResponse<T> = Response<{ hasNext: boolean } & T>;
 
-export type NobitexMarketStatsResponse = Reseponse<{
+export type NobitexMarketStatsResponse = Response<{
     stats: {
         [symbol: string]: NobitexMarketStat;
     };
@@ -24,7 +24,7 @@ export interface NobitexMarketStat {
 
 type Status = "all" | "open" | "done" | "close";
 
-export type NobitexOptionsResponse = Reseponse<{
+export type NobitexOptionsResponse = Response<{
     features: {
         fcmEnabled: boolean;
         chat: string;
@@ -88,7 +88,7 @@ export type TransactionsResponse = PaginatedResponse<{
     transactions: Transaction[];
 }>;
 
-export type WalletsResponse = Reseponse<{
+export type WalletsResponse = Response<{
     wallets: {
         [currency: string]: {
             id: number;

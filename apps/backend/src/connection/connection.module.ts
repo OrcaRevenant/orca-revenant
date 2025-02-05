@@ -6,9 +6,15 @@ import { NobitexConnectionModule } from "@/nobitex-connection/nobitex-connection
 import { ConnectionFactory } from "./connection.factory";
 import { DatabaseModule } from "@/database/database.module";
 import { MockConnectionModule } from "@/mock-connection/mock-connection.module";
+import { CoinexConnectionModule } from "@/coinex-connection/coinex-connection.module";
 
 @Module({
-  imports: [NobitexConnectionModule, MockConnectionModule, DatabaseModule],
+  imports: [
+    NobitexConnectionModule,
+    MockConnectionModule,
+    CoinexConnectionModule,
+    DatabaseModule,
+  ],
   controllers: [ConnectionController],
   providers: [ConnectionService, ConnectionFactory, ConnectionRepository],
   exports: [ConnectionService, ConnectionFactory, ConnectionRepository],

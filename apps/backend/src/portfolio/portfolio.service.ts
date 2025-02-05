@@ -183,7 +183,7 @@ export class PortfolioService {
 
     async create(createPortfolioDto: CreatePortfolioDto, userId: string) {
         const portfolio = await this.portfolioRepository.insert({
-            api_key: createPortfolioDto.apiKey,
+            meta: createPortfolioDto.meta,
             connection_name: createPortfolioDto.connection,
             title: createPortfolioDto.title,
             color: createPortfolioDto.color,
@@ -201,7 +201,7 @@ export class PortfolioService {
         userId: string,
     ) {
         const portfolio = await this.portfolioRepository.updateById(id, {
-            api_key: updatePortfolioDto.apiKey,
+            meta: updatePortfolioDto.meta,
             connection_name: updatePortfolioDto.connection,
             title: updatePortfolioDto.title,
             color: updatePortfolioDto.color,

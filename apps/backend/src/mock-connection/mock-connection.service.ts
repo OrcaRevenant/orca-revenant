@@ -7,6 +7,7 @@ import {
     Transaction,
 } from "@/connection/connection.abstract";
 import { MOCK_ACCOUNTS } from "./mock-connection.constant";
+import { MockMeta } from "./mock-connection.types";
 
 @Injectable()
 export class MockConnectionService implements ConnectionAbstract {
@@ -15,7 +16,7 @@ export class MockConnectionService implements ConnectionAbstract {
     private findPortfolioByApiKey(apiKey: string) {
         for (const account of MOCK_ACCOUNTS) {
             const portfolio = account.portfolios.find((p) =>
-                p.api_key === apiKey && !p.disabled
+                (p.meta as MockMeta).api_key === apiKey && !p.disabled
             );
             if (portfolio) {
                 return portfolio;
@@ -30,11 +31,11 @@ export class MockConnectionService implements ConnectionAbstract {
         return isHealthy ? "active" : "inactive";
     }
 
-    async getTransactions(apiKey: string): Promise<Transaction[]> {
+    async getTransactions(mock: MockMeta): Promise<Transaction[]> {
         // Simulate network delay
         await new Promise((resolve) => setTimeout(resolve, 100));
 
-        const portfolio = this.findPortfolioByApiKey(apiKey);
+        const portfolio = this.findPortfolioByApiKey(mock.api_key);
         if (!portfolio) {
             throw new Error("Invalid API key");
         }
@@ -44,11 +45,11 @@ export class MockConnectionService implements ConnectionAbstract {
         );
     }
 
-    async getAssets(apiKey: string): Promise<Asset[]> {
+    async getAssets(mock: MockMeta): Promise<Asset[]> {
         // Simulate network delay
         await new Promise((resolve) => setTimeout(resolve, 100));
 
-        const portfolio = this.findPortfolioByApiKey(apiKey);
+        const portfolio = this.findPortfolioByApiKey(mock.api_key);
         if (!portfolio) {
             throw new Error("Invalid API key");
         }

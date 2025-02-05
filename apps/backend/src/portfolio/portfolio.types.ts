@@ -5,7 +5,7 @@ export type PortfolioType = "portfolio" | "group";
 export type PortfolioStatus = "active" | "inactive" | "syncing" | "unknown";
 
 export type Portfolio = {
-    api_key: string;
+    meta: Record<string, unknown>;
     color: string;
     connection_name: string;
     created_at: string;

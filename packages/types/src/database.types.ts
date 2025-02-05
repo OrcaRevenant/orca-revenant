@@ -722,7 +722,6 @@ export interface PgsodiumValidKey {
 }
 
 export interface Portfolio {
-  api_key: string;
   color: Generated<string>;
   connection_name: string;
   created_at: Generated<Timestamp>;
@@ -730,6 +729,7 @@ export interface Portfolio {
   group_id: Generated<Int8 | null>;
   id: Generated<Int8>;
   last_sync_at: Timestamp | null;
+  meta: Json;
   status: Generated<string>;
   title: string;
   user_id: Generated<string>;

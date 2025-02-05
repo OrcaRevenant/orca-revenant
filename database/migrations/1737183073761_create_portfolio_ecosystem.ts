@@ -89,7 +89,7 @@ export async function up(db: Kysely<any>): Promise<void> {
 					.onDelete("cascade"),
 		)
 		.addColumn("title", "varchar(255)", (col) => col.notNull())
-		.addColumn("api_key", "text", (col) => col.notNull())
+		.addColumn("meta", "jsonb", (col) => col.notNull())
 		.addColumn(
 			"color",
 			"text",

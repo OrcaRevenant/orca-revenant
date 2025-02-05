@@ -4,7 +4,7 @@ import { Portfolio } from "@orca/types";
 export type MockPortfolio =
     & Pick<
         Portfolio,
-        `connection_name` | `title` | `api_key` | `group_id`
+        `connection_name` | `title` | `meta` | `group_id`
     >
     & { transactions: Transaction[]; color: string; disabled?: boolean };
 
@@ -21,9 +21,12 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
                 connection_name: "mock",
                 title: "Adam Portfolio",
                 color: "#a11043",
-                api_key: "mock-api-key-1",
+
                 disabled: false,
                 group_id: null,
+                meta: {
+                    api_key: "mock-api-key-1",
+                },
                 transactions: [
                     {
                         id: "0",
@@ -59,9 +62,11 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
                 connection_name: "mock",
                 title: "Adam Second Portfolio",
                 color: "#a11043",
-                api_key: "mock-api-key-2",
                 disabled: false,
                 group_id: null,
+                meta: {
+                    api_key: "mock-api-key-2",
+                },
                 transactions: [
                     {
                         id: "00",

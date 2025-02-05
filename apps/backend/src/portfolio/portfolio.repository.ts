@@ -16,7 +16,7 @@ export class PortfolioRepository {
 
   private serialize(portfolio: any): Portfolio {
     return {
-      api_key: portfolio.api_key,
+      meta: portfolio.meta,
       connection_name: portfolio.connection_name,
       created_at: portfolio.created_at,
       disabled: !!portfolio.disabled,
@@ -32,7 +32,7 @@ export class PortfolioRepository {
   async insert(payload: Partial<Portfolio>): Promise<Portfolio> {
     const result = await this.db.query
       .insertInto("portfolio")
-      .values(payload)
+      .values(payload as any)
       .returningAll()
       .executeTakeFirst();
 
@@ -48,7 +48,7 @@ export class PortfolioRepository {
   ): Promise<Portfolio> {
     const result = await this.db.query
       .updateTable("portfolio")
-      .set(payload)
+      .set(payload as any)
       .where("id", "=", `${id}`)
       .where("user_id", "=", payload.user_id)
       .returningAll()

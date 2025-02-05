@@ -85,7 +85,7 @@ export class PortfolioSyncService {
             portfolio.connection_name,
         );
 
-        const assets = await connection.getAssets(portfolio.api_key);
+        const assets = await connection.getAssets(portfolio.meta);
 
         const supportedSymbols = new Set(
             supportedAssets.flatMap((
@@ -121,8 +121,10 @@ export class PortfolioSyncService {
             portfolio.connection_name,
         );
 
-        const transactions = await connection.getTransactions(
-            portfolio.api_key,
+        const transactions = (await connection.getTransactions(
+            portfolio.meta,
+        )).sort((a, b) =>
+            new Date(a.time).getTime() - new Date(b.time).getTime()
         );
 
         const supportedSymbols = new Set(

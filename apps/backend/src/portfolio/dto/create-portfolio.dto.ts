@@ -1,9 +1,9 @@
-import { IsHexColor, IsNotEmpty, IsString } from "class-validator";
+import { IsHexColor, IsNotEmpty, IsObject, IsString } from "class-validator";
 
 export class CreatePortfolioDto {
-    @IsString()
+    @IsObject()
     @IsNotEmpty()
-    apiKey: string;
+    meta: Record<string, unknown>;
 
     @IsString()
     @IsNotEmpty()

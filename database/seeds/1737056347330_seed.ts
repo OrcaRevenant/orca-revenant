@@ -94,25 +94,32 @@ export async function seed(db: Kysely<any>): Promise<void> {
 		logo: "https://nobitex.ir/favicon.png",
 		description: "Nobitex is a digital currency exchange in Iran.",
 		enabled: true,
+	}, {
+		name: "coinex",
+		title: "Coinex",
+		type: "CEX",
+		logo: "https://www.coinex.com/assets/img/brand/svg/day-1.svg",
+		description: "Coinex",
+		enabled: true,
 	}]).execute();
 
 	// Insert into public.portfolio
-	await db
-		.insertInto("public.portfolio")
-		.values(
-			MOCK_ACCOUNTS.flatMap((account) =>
-				account.portfolios.map((portfolio) => ({
-					user_id:
-						sql`(SELECT id FROM auth.users WHERE email = ${account.user})`,
-					connection_name: portfolio.connection_name,
-					title: portfolio.title,
-					color: portfolio.color,
-					api_key: portfolio.api_key,
-					group_id: portfolio.group_id,
-				}))
-			),
-		)
-		.execute();
+	// await db
+	// 	.insertInto("public.portfolio")
+	// 	.values(
+	// 		MOCK_ACCOUNTS.flatMap((account) =>
+	// 			account.portfolios.map((portfolio) => ({
+	// 				user_id:
+	// 					sql`(SELECT id FROM auth.users WHERE email = ${account.user})`,
+	// 				connection_name: portfolio.connection_name,
+	// 				title: portfolio.title,
+	// 				color: portfolio.color,
+	// 				meta: portfolio.meta,
+	// 				group_id: portfolio.group_id,
+	// 			}))
+	// 		),
+	// 	)
+	// 	.execute();
 
 	// Insert into public.asset
 	await db.insertInto("public.asset").values([
@@ -145,6 +152,11 @@ export async function seed(db: Kysely<any>): Promise<void> {
 			name: "Iranian Rial",
 			symbol: "rls",
 			alt_names: [`﷼`],
+		},
+		{
+			name: "Tron",
+			symbol: "trx",
+			logo: "https://bin.bnbstatic.com/static/assets/logos/TRX.png",
 		},
 	]).execute();
 }

@@ -7,6 +7,7 @@ import {
 } from "@/connection/connection.abstract";
 import { NobitexService } from "./nobitex/nobitex.service";
 import { getTransactionTypeFromDescription } from "./nobitex/nobitex.utils";
+import { NobitexMeta } from "./nobitex-connection.types";
 
 @Injectable()
 export class NobitexConnectionService implements ConnectionAbstract {
@@ -15,18 +16,18 @@ export class NobitexConnectionService implements ConnectionAbstract {
     ) {
     }
 
-    async checkHealth(apiKey: string): Promise<Health> {
-        const { status } = await this.nobitexService.getProfile(apiKey);
+    async checkHealth(meta: NobitexMeta): Promise<Health> {
+        const { status } = await this.nobitexService.getProfile(meta.api_key);
         return status === `ok` ? `active` : `inactive`;
     }
 
-    async getTransactions(apiKey: string): Promise<Transaction[]> {
-        const { wallets } = await this.nobitexService.getWallets(apiKey);
+    async getTransactions(meta: NobitexMeta): Promise<Transaction[]> {
+        const { wallets } = await this.nobitexService.getWallets(meta.api_key);
 
         const walletIds = Object.keys(wallets).map((v) => wallets[v].id);
 
         const userTransactionsPromises = walletIds.map((walletId) =>
-            this.nobitexService.getTransactions(apiKey, walletId)
+            this.nobitexService.getTransactions(meta.api_key, walletId)
         );
 
         const userTransactionsResponses = await Promise.all(
@@ -43,13 +44,11 @@ export class NobitexConnectionService implements ConnectionAbstract {
                 time: v.created_at,
                 type: getTransactionTypeFromDescription(v),
             };
-        }).sort((a, b) =>
-            new Date(a.time).getTime() - new Date(b.time).getTime()
-        );
+        });
     }
 
-    async getAssets(apiKey: string): Promise<Asset[]> {
-        const data = await this.nobitexService.getWallets(apiKey);
+    async getAssets(meta: NobitexMeta): Promise<Asset[]> {
+        const data = await this.nobitexService.getWallets(meta.api_key);
 
         const wallets = data.wallets;
 

@@ -1,7 +1,9 @@
 export abstract class ConnectionAbstract {
-    abstract getAssets(apiKey: string): Promise<Asset[]>;
-    abstract getTransactions(apiKey: string): Promise<Transaction[]>;
-    abstract checkHealth(apiKey: string): Promise<Health>;
+    abstract getAssets(meta: Meta): Promise<Asset[]>;
+    abstract checkHealth(meta: Meta): Promise<Health>;
+    abstract getTransactions(
+        meta: Meta,
+    ): Promise<Transaction[]>;
 }
 
 export type Asset = {
@@ -22,3 +24,5 @@ export type Transaction = {
     type: TransactionType;
     amount: number;
 };
+
+export type Meta = Record<string, unknown>;
