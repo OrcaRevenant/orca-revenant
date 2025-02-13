@@ -1,6 +1,5 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { BullModule } from "@nestjs/bullmq";
-import { MockModule } from "../mock/mock.module";
 import { BackfillProcessor } from "./backfill.processor";
 import { BackfillService } from "./backfill.service";
 import { BullBoardModule } from "@bull-board/nestjs";
@@ -23,7 +22,6 @@ import { BackfillStatusService } from "./backfill-status.service";
       name: "backfill",
       adapter: BullMQAdapter,
     }),
-    MockModule,
     SupabaseModule,
     forwardRef(() => PriceModule),
   ],

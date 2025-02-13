@@ -19,7 +19,7 @@ import { ConnectionModule } from "./connection/connection.module";
 import { PortfolioModule } from "./portfolio/portfolio.module";
 import { PriceModule } from "./price/price.module";
 import { EventEmitterModule } from "@nestjs/event-emitter";
-import { MockConnectionModule } from './mock-connection/mock-connection.module';
+import { MockConnectionModule } from "./mock-connection/mock-connection.module";
 
 @Module({
   imports: [
@@ -48,16 +48,19 @@ import { MockConnectionModule } from './mock-connection/mock-connection.module';
     AuthModule,
     DatabaseModule,
     AssetModule,
-    PriceModule,
+    PriceModule.forRoot(),
     FeedbackModule,
     ConnectionModule,
     PortfolioModule,
     MockConnectionModule,
   ],
   controllers: [AppController],
-  providers: [AppService, {
-    provide: APP_INTERCEPTOR,
-    useClass: ResponseInterceptor,
-  }],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ResponseInterceptor,
+    },
+  ],
 })
 export class AppModule {}

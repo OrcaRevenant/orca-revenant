@@ -1,20 +1,15 @@
 import { OnWorkerEvent, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Job } from "bullmq";
-import { Inject } from "@nestjs/common";
-import { PriceAbstract } from "../price.abstract";
 import { JobData } from "./backfill.types";
-import { PriceRepository } from "../price.repository";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
+import { PriceService } from "../price.service";
 
 dayjs.extend(duration);
 
 @Processor("backfill", { concurrency: 5, lockDuration: 300000 })
 export class BackfillProcessor extends WorkerHost {
-  constructor(
-    @Inject("PriceProvider") private readonly priceProvider: PriceAbstract,
-    private readonly priceRepository: PriceRepository,
-  ) {
+  constructor(private readonly priceService: PriceService) {
     super();
   }
 
@@ -34,18 +29,15 @@ export class BackfillProcessor extends WorkerHost {
     console.log(
       `Backfilling for ${asset} from ${from} to ${to} with the resolution of ${resolution} minutes`,
     );
-
-    const historicalPrices = await this.priceProvider.getAssetHistoricalPrice(
-      asset,
-      from,
-      to,
-      resolution,
-    );
-
     try {
-      await this.priceRepository.bulkInsertUsingCopy(
-        historicalPrices,
+      const historicalPrices = await this.priceService.getAssetHistoricalPrice(
+        asset,
+        from,
+        to,
+        resolution,
       );
+
+      await this.priceService.bulkInsert(historicalPrices);
     } catch (error) {
       console.log(error);
     }
