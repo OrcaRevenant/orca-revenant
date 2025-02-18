@@ -20,6 +20,7 @@ import { PortfolioModule } from "./portfolio/portfolio.module";
 import { PriceModule } from "./price/price.module";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { MockConnectionModule } from "./mock-connection/mock-connection.module";
+import { AggregationModule } from "./aggregation/aggregation.module";
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { MockConnectionModule } from "./mock-connection/mock-connection.module";
     FeedbackModule,
     ConnectionModule,
     PortfolioModule,
+    AggregationModule,
     MockConnectionModule,
   ],
   controllers: [AppController],

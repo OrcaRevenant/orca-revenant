@@ -22,7 +22,6 @@ export class AssetRepository {
     endDate: Date,
     resolution: "hourly" | "daily" | "weekly" | "monthly",
   ) {
-    // Assume getResolutionInterval returns a string like '1 hour', '1 day', etc.
     const interval = this.getResolutionInterval(resolution);
 
     const result = await sql`

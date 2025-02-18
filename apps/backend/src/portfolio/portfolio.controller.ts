@@ -7,7 +7,6 @@ import {
     Param,
     Patch,
     Post,
-    Query,
     Req,
     Sse,
     UseGuards,
@@ -18,9 +17,8 @@ import { AuthUserRequest } from "@/shared/types/request.types";
 import { CreatePortfolioDto, UpdatePortfolioDto } from "./dto";
 import { filter, map, Observable } from "rxjs";
 import { PortfolioEventService } from "./portfolio-event.service";
-import { PortfolioStatusUpdate, PortfolioType } from "./portfolio.types";
+import { PortfolioStatusUpdate } from "./portfolio.types";
 import { UniqueIdentifier } from "@/connection/connection.abstract";
-import { PageOptionsDto } from "@/pagination/dto";
 
 @Controller("portfolios")
 export class PortfolioController {
@@ -37,106 +35,6 @@ export class PortfolioController {
     ) {
         const userId = req.user.sub;
         return this.portfolioService.findByUserId(userId);
-    }
-
-    @Get(":id/balance")
-    @UseGuards(JwtGuard)
-    async getBalance(
-        @Req() req: AuthUserRequest,
-        @Param("id") id: string,
-        @Query("type") type: PortfolioType = "portfolio",
-    ) {
-        const userId = req.user.sub;
-        return this.portfolioService.getBalance(
-            id,
-            userId,
-            type,
-        );
-    }
-
-    @Get(":id/assets/allocation")
-    @UseGuards(JwtGuard)
-    async getAssetsAllocation(
-        @Req() req: AuthUserRequest,
-        @Param("id") id: string,
-        @Query("type") type: PortfolioType = "portfolio",
-    ) {
-        const userId = req.user.sub;
-
-        return this.portfolioService.getAssetAllocation(
-            id,
-            userId,
-            type,
-        );
-    }
-
-    @Get(":id/allocation")
-    @UseGuards(JwtGuard)
-    async getAllocation(
-        @Req() req: AuthUserRequest,
-        @Param("id") id: string,
-        @Query("type") type: PortfolioType = "portfolio",
-    ) {
-        const userId = req.user.sub;
-        return this.portfolioService.getAllocation(id, userId, type);
-    }
-
-    @Get(":id/assets")
-    @UseGuards(JwtGuard)
-    async getAssets(
-        @Req() req: AuthUserRequest,
-        @Param("id") id: string,
-        @Query() pageOptionsDto: PageOptionsDto,
-        @Query("type") type: PortfolioType = "portfolio",
-    ) {
-        const userId = req.user.sub;
-
-        return this.portfolioService.getAssets(
-            id,
-            userId,
-            pageOptionsDto,
-            type,
-        );
-    }
-
-    @Get(":id/transactions")
-    @UseGuards(JwtGuard)
-    async getTransactions(
-        @Req() req: AuthUserRequest,
-        @Param("id") id: string,
-        @Query() pageOptionsDto: PageOptionsDto,
-        @Query("type") type: PortfolioType = "portfolio",
-    ) {
-        const userId = req.user.sub;
-
-        return this.portfolioService.getTransactions(
-            id,
-            userId,
-            pageOptionsDto,
-            type,
-        );
-    }
-
-    @Get(":id/balance/history")
-    @UseGuards(JwtGuard)
-    async getHistoricalPortfolioValue(
-        @Req() req: AuthUserRequest,
-        @Param("id") id: string,
-        @Query("startDate") startDate: string,
-        @Query("endDate") endDate: string,
-        @Query("resolution") resolution: "hourly" | "daily",
-        @Query("type") type: PortfolioType = "portfolio",
-    ) {
-        const userId = req.user.sub;
-
-        return this.portfolioService.getHistoricalBalance(
-            id,
-            userId,
-            new Date(startDate),
-            new Date(endDate),
-            resolution,
-            type,
-        );
     }
 
     @Get(":id")
@@ -197,26 +95,6 @@ export class PortfolioController {
         const userId = req.user.sub;
 
         return this.portfolioService.sync(id, userId);
-    }
-
-    @Get(":id/asset/performance")
-    @UseGuards(JwtGuard)
-    async getAssetPerformance(
-        @Req() req: AuthUserRequest,
-        @Param("id") id: string,
-        @Query("startDate") startDate: string,
-        @Query("endDate") endDate: string,
-        @Query("type") type: PortfolioType = "portfolio",
-    ) {
-        const userId = req.user.sub;
-
-        return this.portfolioService.getAssetPerformance(
-            id,
-            userId,
-            new Date(startDate),
-            new Date(endDate),
-            type,
-        );
     }
 
     @Sse(":id/events")

@@ -11,6 +11,20 @@ export async function up(db: Kysely<any>): Promise<void> {
 		)
 		.addColumn("alt_names", sql`text[]`, (col) => col.defaultTo(sql`'{}'`))
 		.execute();
+
+	await db.schema.createTable("public.asset_info")
+		.addColumn(
+			"asset",
+			"text",
+			(col) =>
+				col.notNull().references("asset.symbol").onDelete("cascade"),
+		)
+		.addColumn(
+			"listed_at",
+			"timestamptz",
+			(col) => col.defaultTo(sql`current_timestamp`),
+		)
+		.execute();
 }
 
 export async function down(db: Kysely<any>): Promise<void> {

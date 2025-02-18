@@ -3,9 +3,8 @@ import { PortfolioRepository } from "./portfolio.repository";
 import { CreatePortfolioDto, UpdatePortfolioDto } from "./dto";
 import { PortfolioSyncService } from "@/portfolio/portfolio-sync/portfolio-sync.service";
 import { PageOptionsDto } from "@/pagination/dto";
-import { Portfolio, PortfolioType } from "./portfolio.types";
+import { Portfolio } from "./portfolio.types";
 import { PortfolioAssetService } from "./portfolio-asset/portfolio-asset.service";
-import { PortfolioGroupService } from "./portfolio-group/portfolio-group.service";
 import { TransactionService } from "@/transaction/transaction.service";
 
 @Injectable()
@@ -15,25 +14,15 @@ export class PortfolioService {
         private readonly portfolioSyncService: PortfolioSyncService,
         private readonly transactionService: TransactionService,
         private readonly portfolioAssetService: PortfolioAssetService,
-        private readonly portfolioGroupService: PortfolioGroupService,
     ) {
     }
 
-    /**
-     * Retrieves the balance for either a single portfolio or a group of portfolios
-     * @param id - Portfolio ID or group ID
-     * @param userId - User's unique identifier
-     * @param type - Type of portfolio (single or group)
-     * @returns Object containing the portfolio balance
-     */
     async getBalance(
-        id: string,
+        id: string | string[],
         userId: string,
-        type: PortfolioType,
     ): Promise<{ balance: number }> {
-        const portfolioIds = await this.getPortfolioIds(id, userId, type);
         const balance = await this.portfolioRepository.findBalance(
-            portfolioIds,
+            id,
             userId,
         );
 
@@ -41,70 +30,58 @@ export class PortfolioService {
     }
 
     async getAssets(
-        id: string,
+        id: string | string[],
         userId: string,
         pageOptionsDto: PageOptionsDto,
-        type: PortfolioType,
     ) {
-        const portfolioIds = await this.getPortfolioIds(id, userId, type);
         return this.portfolioAssetService.getByPortfolioIdPaginated(
-            portfolioIds,
+            id,
             userId,
             pageOptionsDto,
         );
     }
 
     async getAssetAllocation(
-        id: string,
+        id: string | string[],
         userId: string,
-        type: PortfolioType,
     ) {
-        const portfolioIds = await this.getPortfolioIds(id, userId, type);
         return this.portfolioAssetService.getAllocation(
-            portfolioIds,
+            id,
             userId,
         );
     }
 
     async getAllocation(
-        id: string,
+        id: string | string[],
         userId: string,
-        type: PortfolioType,
     ) {
-        const portfolioIds = await this.getPortfolioIds(id, userId, type);
         return this.portfolioRepository.findPortfolioAllocation(
-            portfolioIds,
+            id,
             userId,
         );
     }
 
     async getTransactions(
-        id: string,
+        id: string | string[],
         userId: string,
         pageOptionsDto: PageOptionsDto,
-        type: PortfolioType,
     ) {
-        const portfolioIds = await this.getPortfolioIds(id, userId, type);
-
         return this.transactionService.findByPortfolioIdPaginated(
-            portfolioIds,
+            id,
             userId,
             pageOptionsDto,
         );
     }
 
     async getHistoricalBalance(
-        id: string,
+        id: string | string[],
         userId: string,
         startDate: Date,
         endDate: Date,
         resolution: "hourly" | "daily",
-        type: PortfolioType,
     ) {
-        const portfolioIds = await this.getPortfolioIds(id, userId, type);
-
         return this.portfolioRepository.findBalanceHistory(
-            portfolioIds,
+            id,
             userId,
             startDate,
             endDate,
@@ -113,16 +90,13 @@ export class PortfolioService {
     }
 
     async getAssetPerformance(
-        id: string,
+        id: string | string[],
         userId: string,
         startDate: Date,
         endDate: Date,
-        type: PortfolioType,
     ) {
-        const portfolioIds = await this.getPortfolioIds(id, userId, type);
-
         return this.portfolioRepository.findBestPerformingAsset(
-            portfolioIds,
+            id,
             userId,
             startDate,
             endDate,
@@ -238,21 +212,5 @@ export class PortfolioService {
 
     async getUnsynced(minutes: number): Promise<Portfolio[]> {
         return this.portfolioRepository.findUnsynced(minutes);
-    }
-
-    private async getPortfolioIds(
-        id: string,
-        userId: string,
-        type: PortfolioType,
-    ): Promise<string | string[]> {
-        if (type === "group") {
-            const portfolios = await this.portfolioGroupService.getById(
-                id,
-                userId,
-            );
-            return portfolios.map((portfolio) => portfolio.id);
-        }
-
-        return id;
     }
 }
