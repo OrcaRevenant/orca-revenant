@@ -21,6 +21,8 @@ import { PriceModule } from "./price/price.module";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { MockConnectionModule } from "./mock-connection/mock-connection.module";
 import { AggregationModule } from "./aggregation/aggregation.module";
+import { OhlcvDownloaderModule } from './ohlcv-downloader/ohlcv-downloader.module';
+import { AgentModule } from './ohlcv-downloader/agent/agent.module';
 
 @Module({
   imports: [
@@ -49,12 +51,14 @@ import { AggregationModule } from "./aggregation/aggregation.module";
     AuthModule,
     DatabaseModule,
     AssetModule,
-    PriceModule.forRoot(),
+    OhlcvDownloaderModule,
+    PriceModule,
     FeedbackModule,
     ConnectionModule,
     PortfolioModule,
     AggregationModule,
     MockConnectionModule,
+    AgentModule,
   ],
   controllers: [AppController],
   providers: [

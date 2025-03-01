@@ -43,7 +43,7 @@ export class PortfolioSyncService {
 
         await this.updateStatusAndSendEvent(portfolio, `syncing`);
 
-        const supportedAssets = await this.assetService.findAll();
+        const supportedAssets = await this.assetService.getAll();
 
         try {
             await Promise.all([

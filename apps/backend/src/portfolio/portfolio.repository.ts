@@ -189,7 +189,7 @@ export class PortfolioRepository {
             )
             SELECT 
                 pb.id,
-                pb.title,
+              pb.title,
                 pb.balance::text,
                 (pb.balance / NULLIF(tb.total, 0) * 100)::text as percentage
             FROM portfolio_balances pb
@@ -265,15 +265,10 @@ export class PortfolioRepository {
   ): Promise<number> {
     const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
 
+    await this.isOwner(ids, userId);
+
     const result = await sql`
-            WITH authorized_portfolios AS (
-                -- First verify ownership of all portfolios
-                SELECT id
-                FROM portfolio
-                WHERE id = ANY(${ids})
-                AND user_id = ${userId}
-            ),
-            portfolio_balances AS (
+            WITH portfolio_balances AS (
                 SELECT 
                     pa.portfolio_id,
                     pa.asset,
@@ -308,15 +303,10 @@ export class PortfolioRepository {
     const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
     const interval = this.getResolutionInterval(resolution);
 
+    await this.isOwner(ids, userId);
+
     const records = await sql`
-          WITH authorized_portfolios AS (
-              -- Verify ownership of all portfolios
-              SELECT id
-              FROM portfolio
-              WHERE id = ANY(${ids})
-              AND user_id = ${userId}
-          ),
-          time_buckets AS (
+          WITH time_buckets AS (
               SELECT time_bucket(${interval}::interval, generate_series(
                   ${startDate}::timestamptz,
                   ${endDate}::timestamptz,
@@ -425,7 +415,6 @@ export class PortfolioRepository {
   }> {
     const ids = Array.isArray(portfolioId) ? portfolioId : [portfolioId];
 
-    // Verify ownership of all portfolios
     await this.isOwner(ids, userId);
 
     const result = await sql<{

@@ -14,8 +14,10 @@
     "doc:start": "turbo run --filter=\"doc\" start:dev",
     "app:backend": "turbo run --filter=\"backend\"",
     "typegen": "kysely-codegen --env-file .env.development.local --out-file ./packages/types/src/database.types.ts",
-    "update:db:max_locks_per_transaction": "docker exec -it supabase_db_orca-revenant bash -c 'echo \"max_locks_per_transaction = '128'\" >> /etc/postgresql/postgresql.conf && su postgres -c \"/usr/lib/postgresql/bin/pg_ctl reload\"'",
-    "reset:db": "supabase db reset && pnpm run update:db:max_locks_per_transaction && pnpm kysely migrate:latest --cwd ./database && pnpm kysely seed:run --cwd ./database && pnpm typegen"
+    "db:update:max_locks_per_transaction": "docker exec -it supabase_db_orca-revenant bash -c 'echo \"max_locks_per_transaction = '128'\" >> /etc/postgresql/postgresql.conf && su postgres -c \"/usr/lib/postgresql/bin/pg_ctl reload\"'",
+    "db:reset": "supabase db reset && pnpm run db:update:max_locks_per_transaction && pnpm kysely migrate:latest --cwd ./database && pnpm kysely seed:run --cwd ./database && pnpm typegen",
+    "db:dump": "docker exec supabase_db_orca-revenant pg_dump -U postgres -d postgres --data-only --rows-per-insert=1000 -f /tmp/dump.sql && docker cp supabase_db_orca-revenant:/tmp/dump.sql ./dump.sql",
+    "db:restore": "docker exec -i supabase_db_orca-revenant psql -U postgres -d \"$DATABASE_URL\" -v ON_ERROR_STOP=0 < dump_price.sql"
   },
   "license": "ISC",
   "dependencies": {

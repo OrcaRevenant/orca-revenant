@@ -32,8 +32,8 @@ export class BackfillProcessor extends WorkerHost {
     try {
       const historicalPrices = await this.priceService.getAssetHistoricalPrice(
         asset,
-        from,
-        to,
+        new Date(from),
+        new Date(to),
         resolution,
       );
 

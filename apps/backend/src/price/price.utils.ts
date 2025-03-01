@@ -1,4 +1,4 @@
-import { HistoricalPrice } from "./price.abstract";
+import { HistoricalPrice, Resolution } from "./price.abstract";
 
 export function getCronExpression(interval: number): string {
   if (interval >= 1) {
@@ -12,45 +12,35 @@ export function getCronExpression(interval: number): string {
   return `${seconds} ${minutes} ${hours} * * *`;
 }
 
+/**
+ * Aggregates 1-minute interval prices into a larger time interval while preserving the last price.
+ *
+ * @param prices - Array of 1-minute interval prices (sorted from oldest to newest).
+ * @param resolution - The desired interval in minutes (e.g., 2, 3, 5, etc.).
+ * @returns Aggregated prices with consistent new intervals.
+ */
 export function aggregatePriceData(
   prices: HistoricalPrice[],
-  resolutionMinutes: number,
+  resolution: Resolution,
 ): HistoricalPrice[] {
-  prices.sort(
-    (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime(),
-  );
+  if (prices.length === 0) return [];
 
-  if (resolutionMinutes <= 1) return prices;
+  const aggregated: HistoricalPrice[] = [];
+  let lastSelectedTime = new Date(prices[prices.length - 1].time);
 
-  const aggregatedPrices: HistoricalPrice[] = [];
-  let currentGroup: HistoricalPrice[] = [];
+  aggregated.push(prices[prices.length - 1]);
 
-  for (const price of prices) {
-    const priceTime = new Date(price.time);
+  for (let i = prices.length - 2; i >= 0; i--) {
+    const currentTime = new Date(prices[i].time);
 
-    if (currentGroup.length === 0) {
-      currentGroup.push(price);
-    } else {
-      const firstPriceInGroup = new Date(currentGroup[0].time);
-      const minutesDifference =
-        (priceTime.getTime() - firstPriceInGroup.getTime()) / (1000 * 60);
-
-      if (minutesDifference < resolutionMinutes) {
-        currentGroup.push(price);
-      } else {
-        if (currentGroup.length > 0) {
-          const aggregatedPrice = this.calculateAggregatedPrice(currentGroup);
-          aggregatedPrices.push(aggregatedPrice);
-        }
-        currentGroup = [price];
-      }
+    if (
+      (lastSelectedTime.getTime() - currentTime.getTime()) / 60000 >=
+        resolution
+    ) {
+      aggregated.push(prices[i]);
+      lastSelectedTime = currentTime;
     }
   }
 
-  if (currentGroup.length > 0) {
-    const aggregatedPrice = this.calculateAggregatedPrice(currentGroup);
-    aggregatedPrices.push(aggregatedPrice);
-  }
-
-  return aggregatedPrices;
+  return aggregated.reverse();
 }

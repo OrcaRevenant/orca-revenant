@@ -5,7 +5,7 @@ import { AssetRepository } from "./asset.repository";
 export class AssetService {
     constructor(private readonly assetRepository: AssetRepository) {}
 
-    async findAll() {
+    async getAll() {
         return this.assetRepository.findAll();
     }
 

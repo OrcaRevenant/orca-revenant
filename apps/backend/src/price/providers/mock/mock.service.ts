@@ -39,24 +39,26 @@ export class MockService implements PriceAbstract {
     return prices;
   }
 
-  async getCurrentAssetPrices(
+  async getAssetCurrentPrice(
     assets: string[],
-  ): Promise<Record<string, number>> {
-    const prices: Record<string, number> = {};
+  ): Promise<Record<string, HistoricalPrice>> {
+    const result: Record<string, HistoricalPrice> = {};
+    const time = new Date().toISOString();
 
     for (const asset of assets) {
-      prices[asset] = await this.getCurrentAssetPrice(asset);
+      const price = await this.getCurrentAssetPrice(asset);
+      result[asset] = { time, price, asset };
     }
 
-    return prices;
+    return result;
   }
 
   private async getAssetPriceAtTime(
     asset: string,
     time: Date,
   ): Promise<number> {
-    const assetData =
-      MOCK_ASSET_PRICES[asset.toLowerCase()] || this.defaultPrice;
+    const assetData = MOCK_ASSET_PRICES[asset.toLowerCase()] ||
+      this.defaultPrice;
 
     const { basePrice, fluctuationRange, precision } = assetData;
     const fluctuationFactor = this.generateFluctuation(
@@ -70,8 +72,8 @@ export class MockService implements PriceAbstract {
   }
 
   private async getCurrentAssetPrice(asset: string): Promise<number> {
-    const assetData =
-      MOCK_ASSET_PRICES[asset.toLowerCase()] || this.defaultPrice;
+    const assetData = MOCK_ASSET_PRICES[asset.toLowerCase()] ||
+      this.defaultPrice;
 
     const { basePrice, fluctuationRange, precision } = assetData;
     const fluctuationFactor = this.generateFluctuation(
@@ -93,8 +95,8 @@ export class MockService implements PriceAbstract {
     const seed = Math.sin(timestamp) * 10000;
     let result = ((seed % 1) - 0.5) * 2 * range;
 
-    const currentPrice =
-      this.currentPrices[asset.toLowerCase()] || this.defaultPrice.basePrice;
+    const currentPrice = this.currentPrices[asset.toLowerCase()] ||
+      this.defaultPrice.basePrice;
 
     // Increase the price if it has too many negatives
     if (currentPrice < this.defaultPrice.basePrice * 0.5) {

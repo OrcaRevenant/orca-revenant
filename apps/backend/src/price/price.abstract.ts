@@ -1,4 +1,4 @@
-export type Resolution = string | number;
+export type Resolution = number;
 export type HistoricalPrice = { time: string; price: number; asset: string };
 
 export abstract class PriceAbstract {
