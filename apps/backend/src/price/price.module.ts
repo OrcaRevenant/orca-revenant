@@ -8,6 +8,7 @@ import { PriceRepository } from "./price.repository";
 import { PriceService } from "./price.service";
 import { AssetDetailsModule } from "@/asset-details/asset-details.module";
 import { BinanceModule } from "./providers/binance/binance.module";
+import { PriceProviderModule } from "./providers/price-provider.module";
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { BinanceModule } from "./providers/binance/binance.module";
     AssetDetailsModule,
     BackfillModule,
     BinanceModule,
+    PriceProviderModule,
   ],
   providers: [PriceService, PriceRepository],
   exports: [PriceService, PriceRepository],

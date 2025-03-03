@@ -1,35 +1,47 @@
 import dayjs, { Dayjs } from "dayjs";
-import priceConfig from "./price.config";
-import { PriceAbstract, Resolution } from "./price.abstract";
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  OnModuleInit,
+} from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
+import { SchedulerRegistry } from "@nestjs/schedule";
+import { OnEvent } from "@nestjs/event-emitter";
+import { CronJob } from "cron";
+
+import priceConfig from "./price.config";
+import { HistoricalPrice, PriceAbstract, Resolution } from "./price.abstract";
 import { BackfillService } from "./backfill/backfill.service";
 import { PriceRepository } from "./price.repository";
 import { AssetRepository } from "@/asset/asset.repository";
-import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
-import { SchedulerRegistry } from "@nestjs/schedule";
 import { Price } from "./price.types";
-import { CronJob } from "cron";
-import { OnEvent } from "@nestjs/event-emitter";
+import { PriceProviderRegistry } from "./providers/price-provider.registry";
 
 @Injectable()
-export class PriceService implements OnModuleInit {
+export class PriceService extends PriceAbstract implements OnModuleInit {
   constructor(
     @Inject(priceConfig.KEY) private readonly config: ConfigType<
       typeof priceConfig
     >,
-    @Inject("PriceProvider") private readonly priceProvider: PriceAbstract,
     private readonly backfillService: BackfillService,
     private readonly priceRepository: PriceRepository,
     private readonly assetRepository: AssetRepository,
     private readonly schedulerRegistry: SchedulerRegistry,
-  ) {}
+    private readonly priceProviderRegistry: PriceProviderRegistry,
+  ) {
+    super();
+  }
 
   async onModuleInit() {
+    await this.priceProviderRegistry.init();
+
     console.log(`Draining queue...`);
     try {
       await this.backfillService.queue.pause();
       await this.backfillService.queue.drain();
       await this.backfillService.queue.obliterate({ force: true });
+
       console.log(`Queue drained successfully!`);
       await this.performBackfill();
     } catch (error) {
@@ -56,15 +68,14 @@ export class PriceService implements OnModuleInit {
 
     await Promise.all(
       symbols.map(async (symbol) => {
-        const startTrackingFromDate = await this
-          .determineStartTrackingDate(symbol, currentDate);
-
-        const gapSeconds = currentDate.diff(
-          startTrackingFromDate,
-          "seconds",
+        const startTrackingFromDate = await this.determineStartTrackingDate(
+          symbol,
+          currentDate,
         );
 
-        if (gapSeconds <= stepMinutes * 60) {
+        const gapSeconds = currentDate.diff(startTrackingFromDate, "seconds");
+
+        if (gapSeconds <= stepMinutes * 60) { // 
           console.log(
             `No backfill needed for ${symbol}. Gap: ${
               gapSeconds / 60
@@ -92,8 +103,18 @@ export class PriceService implements OnModuleInit {
     from: Date,
     to: Date,
     resolution: Resolution,
-  ) {
-    return this.priceProvider.getAssetHistoricalPrice(
+  ): Promise<HistoricalPrice[]> {
+    const provider = this.priceProviderRegistry.getProvider(asset);
+
+    if (!provider) {
+      throw new NotFoundException(
+        `No price provider found that supports asset: ${asset}`,
+      );
+    }
+
+    console.log(`Using provider '${provider.getName()}' for asset '${asset}'`);
+
+    return provider.getHistoricalPrice(
       asset,
       from,
       to,
@@ -114,14 +135,11 @@ export class PriceService implements OnModuleInit {
     asset: string,
     currentDate: Dayjs,
   ): Promise<dayjs.Dayjs> {
-    const lastPriceTime = await this.priceRepository.findLatestTimestamp(
-      asset,
-    );
+    const lastPriceTime = await this.priceRepository.findLatestTimestamp(asset);
     if (!lastPriceTime) {
-      return currentDate.subtract(
-        this.config.initialLookbackYears,
-        "year",
-      ).startOf("minute");
+      return currentDate
+        .subtract(this.config.initialLookbackYears, "years")
+        .startOf("minute");
     }
 
     const lastPriceDate = dayjs(lastPriceTime);

@@ -1,0 +1,1 @@
+export const PRICE_PROVIDER = "PRICE_PROVIDER";

@@ -1,8 +1,8 @@
 import { HttpService } from "@nestjs/axios";
-import { CircuitBreaker } from "./circuit-breaker.class";
-import { RateLimitManager } from "./rate-limit-manager.class";
-import { RateLimiter } from "./rate-limiter.class";
-import { Semaphore } from "./semaphore.class";
+import { CircuitBreaker } from "./utils/circuit-breaker.class";
+import { RateLimitManager } from "./utils/rate-limit-manager.class";
+import { RateLimiter } from "./utils/rate-limiter.class";
+import { Semaphore } from "./utils/semaphore.class";
 import { firstValueFrom } from "rxjs";
 
 // TODO: convert to nest module
@@ -25,14 +25,12 @@ export class BinanceClient {
     circuitBreaker: CircuitBreaker;
     rateLimitManager: RateLimitManager;
     semaphore: Semaphore;
-    private readonly httpService: HttpService;
     constructor(
-        httpService: HttpService,
+        private readonly httpService: HttpService,
         maxWorkers?: number,
         maxRetries?: number,
         timeout = 10000,
     ) {
-        this.httpService = httpService;
         this.maxWorkers = maxWorkers || MAX_WORKERS;
         this.maxRetries = maxRetries || MAX_RETRIES;
         this.timeout = timeout;
@@ -215,21 +213,10 @@ export class BinanceClient {
         start: number,
         end: number,
     ): Promise<any[]> {
-        const pegged = [`usdt`, `usdc`];
-
-        if (pegged.includes(symbol.replace(`usdt`, ``).toLowerCase())) {
-            const results: any[] = [];
-            const chunks = await this.getChunkPeriods(start, end, interval);
-            for (const [chunkStart] of chunks) {
-                results.push([chunkStart, 1, 1, 1, 1, 1]); // peg to 1 dollar
-            }
-            return results;
-        }
-
         const chunks = await this.getChunkPeriods(start, end, interval);
         let progress = 0;
         const total = chunks.length;
-        const tasks = chunks.map((chunk, i) => {
+        const tasks = chunks.map(async (chunk, i) => {
             const [chunkStart, chunkEnd] = chunk;
             return this.fetchOhlcvChunk(
                 `${symbol}_${i}`,
@@ -248,6 +235,7 @@ export class BinanceClient {
                     return result;
                 });
         });
+
         let results: any[] = [];
         try {
             const responses = await Promise.all(tasks);
@@ -263,41 +251,5 @@ export class BinanceClient {
         }
         results.sort((a, b) => a[0] - b[0]);
         return results;
-    }
-
-    async getTickerPrice(symbols: string[]): Promise<{
-        symbol: string;
-        price: string;
-    }[]> {
-        const url = `${BASE_URL}/api/v3/ticker/price`;
-        const params = { symbols: JSON.stringify(symbols) };
-        for (let attempt = 0; attempt < this.maxRetries; attempt++) {
-            try {
-                await this.semaphore.acquire();
-                const response = await firstValueFrom(
-                    this.httpService.get(url, {
-                        params,
-                        timeout: this.timeout,
-                    }),
-                );
-                this.semaphore.release();
-                return response.data;
-            } catch (error) {
-                this.semaphore.release();
-                console.error(
-                    `Error fetching ticker price for ${
-                        symbols.join(`, `)
-                    } (attempt ${attempt + 1}):`,
-                    error,
-                );
-                if (attempt === this.maxRetries - 1) {
-                    throw error;
-                }
-                await sleep(1000); // simple retry delay
-            }
-        }
-        throw new Error(
-            `Unable to fetch ticker price for symbol: ${symbols.join(`, `)}`,
-        );
     }
 }

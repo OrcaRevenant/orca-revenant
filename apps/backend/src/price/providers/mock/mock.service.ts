@@ -1,9 +1,20 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { MOCK_ASSET_PRICES } from "./mock.constant";
-import { HistoricalPrice, PriceAbstract } from "@/price/price.abstract";
+import { HistoricalPrice } from "@/price/price.abstract";
+import { PriceProviderAbstract } from "../price-provider.abstract";
+import mockConfig from "./mock.config";
+import { ConfigType } from "@nestjs/config";
 
 @Injectable()
-export class MockService implements PriceAbstract {
+export class MockService extends PriceProviderAbstract {
+  constructor(
+    @Inject(mockConfig.KEY) protected readonly config: ConfigType<
+      typeof mockConfig
+    >,
+  ) {
+    super(config);
+  }
+
   private readonly defaultPrice: (typeof MOCK_ASSET_PRICES)[number] = {
     basePrice: 1,
     fluctuationRange: 0.001,
@@ -12,7 +23,7 @@ export class MockService implements PriceAbstract {
 
   private currentPrices: Record<string, number> = {};
 
-  async getAssetHistoricalPrice(
+  async getHistoricalPrice(
     asset: string,
     from: Date,
     to: Date,

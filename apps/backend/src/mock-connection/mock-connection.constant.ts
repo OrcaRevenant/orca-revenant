@@ -43,6 +43,13 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
                         type: "deposit",
                     },
                     {
+                        id: "1",
+                        amount: 1_000_000,
+                        asset: "irt",
+                        time: "2023-01-05T00:00:00Z",
+                        type: "deposit",
+                    },
+                    {
                         id: "2",
                         amount: 1,
                         asset: "bnb",
@@ -56,6 +63,8 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
                         time: "2024-05-22T00:00:00Z",
                         type: "withdrawal",
                     },
+
+                    
                 ],
             },
             {

@@ -259,36 +259,38 @@ export class PortfolioRepository {
       percentage: Number(row.percentage),
     }));
   }
+
   async findBalance(
     portfolioIds: UniqueIdentifier | UniqueIdentifier[],
     userId: UniqueIdentifier,
   ): Promise<number> {
     const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
 
+    // Verify ownership of all portfolios
     await this.isOwner(ids, userId);
 
     const result = await sql`
-            WITH portfolio_balances AS (
-                SELECT 
-                    pa.portfolio_id,
-                    pa.asset,
-                    pa.amount,
-                    p.price
-                FROM portfolio_assets pa
-                INNER JOIN authorized_portfolios ap ON pa.portfolio_id = ap.id
-                LEFT JOIN LATERAL (
-                    SELECT price
-                    FROM price
-                    WHERE asset = pa.asset
-                    ORDER BY time DESC
-                    LIMIT 1
-                ) p ON true
-            )
+        WITH portfolio_balances AS (
             SELECT 
-                COALESCE(SUM(amount * price), 0)::text as total_value,
-                COUNT(DISTINCT portfolio_id) as found_portfolios
-            FROM portfolio_balances;
-        `.execute(this.db.query);
+                pa.portfolio_id,
+                pa.asset,
+                pa.amount,
+                p.price
+            FROM portfolio_assets pa
+            CROSS JOIN LATERAL (
+                SELECT price
+                FROM price
+                WHERE asset = pa.asset
+                ORDER BY time DESC
+                LIMIT 1
+            ) p
+            WHERE pa.portfolio_id = ANY(${ids.map((id) => `${id}`)})
+        )
+        SELECT 
+            COALESCE(SUM(amount * price), 0)::text as total_value,
+            COUNT(DISTINCT portfolio_id) as found_portfolios
+        FROM portfolio_balances;
+    `.execute(this.db.query);
 
     return Number((result.rows[0] as any)?.total_value || 0);
   }
@@ -306,90 +308,90 @@ export class PortfolioRepository {
     await this.isOwner(ids, userId);
 
     const records = await sql`
-          WITH time_buckets AS (
-              SELECT time_bucket(${interval}::interval, generate_series(
-                  ${startDate}::timestamptz,
-                  ${endDate}::timestamptz,
-                  ${interval}::interval
-              )) AS bucket_time
-          ),
-          asset_balances AS (
-              SELECT 
-                  time_bucket(${interval}::interval, t.time) as bucket_time,
-                  t.asset,
-                  t.portfolio_id,
-                  SUM(CASE 
-                      WHEN t.type IN ('buy', 'deposit') THEN t.amount::numeric
-                      WHEN t.type IN ('sell', 'withdrawal') THEN -t.amount::numeric
-                      ELSE 0
-                  END) OVER (
-                      PARTITION BY t.portfolio_id, t.asset 
-                      ORDER BY time_bucket(${interval}::interval, t.time)
-                  ) as running_balance
-              FROM public.transaction t
-              INNER JOIN authorized_portfolios ap ON t.portfolio_id = ap.id
-              WHERE t.time <= ${endDate}::timestamptz
-          ),
-          
-          latest_balances AS (
-              SELECT DISTINCT ON (b.portfolio_id, b.asset, tb.bucket_time)
-                  tb.bucket_time,
-                  b.portfolio_id,
-                  b.asset,
-                  LAST_VALUE(b.running_balance) OVER (
-                      PARTITION BY b.portfolio_id, b.asset, tb.bucket_time
-                      ORDER BY b.bucket_time
-                      RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
-                  ) as balance
-              FROM time_buckets tb
-              LEFT JOIN asset_balances b 
-                  ON b.bucket_time <= tb.bucket_time
-              WHERE b.running_balance IS NOT NULL
-          ),
-          
-          aggregated_balances AS (
-              SELECT
-                  bucket_time,
-                  asset,
-                  SUM(balance) as total_balance
-              FROM latest_balances
-              GROUP BY bucket_time, asset
-          ),
-          
-          valuations AS (
-              SELECT 
-                  ab.bucket_time,
-                  ab.asset,
-                  ab.total_balance as amount,
-                  p.price as price_per_unit,
-                  (ab.total_balance * p.price) as value
-              FROM aggregated_balances ab
-              LEFT JOIN LATERAL (
-                  SELECT price
-                  FROM public.price
-                  WHERE asset = ab.asset
-                  AND time <= ab.bucket_time
-                  ORDER BY time DESC
-                  LIMIT 1
-              ) p ON true
-              WHERE ab.total_balance != 0
-          )
-          
+      WITH time_buckets AS (
+          SELECT time_bucket(${interval}::interval, generate_series(
+              ${startDate}::timestamptz,
+              ${endDate}::timestamptz,
+              ${interval}::interval
+          )) AS bucket_time
+      ),
+      asset_balances AS (
           SELECT 
-              v.bucket_time as time,
-              jsonb_agg(
-                  jsonb_build_object(
-                      'asset', v.asset,
-                      'amount', v.amount::text,
-                      'price_per_unit', v.price_per_unit::text,
-                      'value', v.value::text
-                  )
-              ) as balances,
-              SUM(v.value)::text as total_value
-          FROM valuations v
-          GROUP BY v.bucket_time
-          ORDER BY v.bucket_time;
-      `.execute(this.db.query);
+              time_bucket(${interval}::interval, t.time) as bucket_time,
+              t.asset,
+              t.portfolio_id,
+              SUM(CASE 
+                  WHEN t.type IN ('buy', 'deposit') THEN t.amount::numeric
+                  WHEN t.type IN ('sell', 'withdrawal') THEN -t.amount::numeric
+                  ELSE 0
+              END) OVER (
+                  PARTITION BY t.portfolio_id, t.asset 
+                  ORDER BY time_bucket(${interval}::interval, t.time)
+              ) as running_balance
+          FROM public.transaction t
+          WHERE t.portfolio_id = ANY(${ids})
+          AND t.time <= ${endDate}::timestamptz
+      ),
+      
+      latest_balances AS (
+          SELECT DISTINCT ON (b.portfolio_id, b.asset, tb.bucket_time)
+              tb.bucket_time,
+              b.portfolio_id,
+              b.asset,
+              LAST_VALUE(b.running_balance) OVER (
+                  PARTITION BY b.portfolio_id, b.asset, tb.bucket_time
+                  ORDER BY b.bucket_time
+                  RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+              ) as balance
+          FROM time_buckets tb
+          LEFT JOIN asset_balances b 
+              ON b.bucket_time <= tb.bucket_time
+          WHERE b.running_balance IS NOT NULL
+      ),
+      
+      aggregated_balances AS (
+          SELECT
+              bucket_time,
+              asset,
+              SUM(balance) as total_balance
+          FROM latest_balances
+          GROUP BY bucket_time, asset
+      ),
+      
+      valuations AS (
+          SELECT 
+              ab.bucket_time,
+              ab.asset,
+              ab.total_balance as amount,
+              p.price as price_per_unit,
+              (ab.total_balance * p.price) as value
+          FROM aggregated_balances ab
+          LEFT JOIN LATERAL (
+              SELECT price
+              FROM public.price
+              WHERE asset = ab.asset
+              AND time <= ab.bucket_time
+              ORDER BY time DESC
+              LIMIT 1
+          ) p ON true
+          WHERE ab.total_balance != 0
+      )
+      
+      SELECT 
+          v.bucket_time as time,
+          jsonb_agg(
+              jsonb_build_object(
+                  'asset', v.asset,
+                  'amount', v.amount::text,
+                  'price_per_unit', v.price_per_unit::text,
+                  'value', v.value::text
+              )
+          ) as balances,
+          SUM(v.value)::text as total_value
+      FROM valuations v
+      GROUP BY v.bucket_time
+      ORDER BY v.bucket_time;
+  `.execute(this.db.query);
 
     return records.rows;
   }

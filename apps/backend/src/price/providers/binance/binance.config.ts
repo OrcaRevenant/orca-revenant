@@ -1,9 +1,9 @@
 import { registerAs } from "@nestjs/config";
+import { PriceProviderConfig } from "../price-provider.abstract";
 
-export default registerAs("binance", () => ({
-    maxWorkers: 5,
-    maxRetries: 3,
-    baseUrl: "https://api.binance.com",
-    klinesLimit: 1000,
-    simulate429Errors: false,
+export default registerAs<PriceProviderConfig>("binance", () => ({
+    includes: `*`,
+    excludes: [`irt`, `usdt`, `xaut`],
+    name: `binance`,
+    priority: 1,
 }));

@@ -141,6 +141,11 @@ export async function seed(db: Kysely<any>): Promise<void> {
                 logo: "https://bin.bnbstatic.com/static/assets/logos/USDT.png",
             },
             {
+                name: "Toman",
+                symbol: "irt",
+                logo: "https://nobitex.ir/_nuxt/img/irt.ee27747.svg",
+            },
+            {
                 name: "Ethereum",
                 symbol: "eth",
                 logo: "https://bin.bnbstatic.com/static/assets/logos/ETH.png",
@@ -151,14 +156,29 @@ export async function seed(db: Kysely<any>): Promise<void> {
                 logo: "https://bin.bnbstatic.com/static/assets/logos/BNB.png",
             },
             {
-                name: "Ton coin",
-                symbol: "ton",
+                name: "Ripple",
+                symbol: "xrp",
+                logo: "https://bin.bnbstatic.com/static/assets/logos/XRP.png",
+            },
+            {
+                name: "Solana",
+                symbol: "sol",
                 logo: "https://bin.bnbstatic.com/static/assets/logos/TON.png",
+            },
+            {
+                name: "Cardano",
+                symbol: "ada",
+                logo: "https://bin.bnbstatic.com/static/assets/logos/ADA.png",
             },
             {
                 name: "Tron",
                 symbol: "trx",
                 logo: "https://bin.bnbstatic.com/static/assets/logos/TRX.png",
+            },
+            {
+                name: "XAUT",
+                symbol: "xaut",
+                logo: "https://bin.bnbstatic.com/static/assets/logos/xaut.png",
             },
         ])
         .execute();
