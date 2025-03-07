@@ -15,11 +15,7 @@ import { PortfolioAssetModule } from "./portfolio-asset/portfolio-asset.module";
     PortfolioAssetModule,
     forwardRef(() => PortfolioSyncModule),
   ],
-  providers: [
-    PortfolioService,
-    PortfolioRepository,
-    PortfolioEventService,
-  ],
+  providers: [PortfolioService, PortfolioRepository, PortfolioEventService],
   controllers: [PortfolioController],
   exports: [PortfolioService, PortfolioEventService, PortfolioRepository],
 })

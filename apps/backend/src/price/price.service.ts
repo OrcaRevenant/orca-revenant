@@ -21,14 +21,13 @@ import { PriceProviderRegistry } from "./providers/price-provider.registry";
 @Injectable()
 export class PriceService extends PriceAbstract implements OnModuleInit {
   constructor(
-    @Inject(priceConfig.KEY) private readonly config: ConfigType<
-      typeof priceConfig
-    >,
+    @Inject(priceConfig.KEY)
+    private readonly config: ConfigType<typeof priceConfig>,
     private readonly backfillService: BackfillService,
     private readonly priceRepository: PriceRepository,
     private readonly assetRepository: AssetRepository,
     private readonly schedulerRegistry: SchedulerRegistry,
-    private readonly priceProviderRegistry: PriceProviderRegistry,
+    private readonly priceProviderRegistry: PriceProviderRegistry
   ) {
     super();
   }
@@ -38,63 +37,72 @@ export class PriceService extends PriceAbstract implements OnModuleInit {
 
     console.log(`Draining queue...`);
     try {
+      console.log("Attempting to pause queue...");
       await this.backfillService.queue.pause();
+
+      console.log("Attempting to drain queue...");
       await this.backfillService.queue.drain();
+
+      console.log("Attempting to obliterate queue...");
       await this.backfillService.queue.obliterate({ force: true });
 
       console.log(`Queue drained successfully!`);
-      await this.performBackfill();
+      // await this.performBackfill();
     } catch (error) {
-      console.error("Error during onModuleInit:", error);
+      console.error("Error during onModuleInit:", error.message);
+      console.error("Error stack:", error.stack);
     }
   }
 
-  @OnEvent("backfill.completed")
-  async onPriceBackfillCompleted() {
-    const job = new CronJob(this.config.updateCron, async () => {
-      await this.performBackfill();
-    });
+  // @OnEvent("backfill.completed")
+  // async onPriceBackfillCompleted() {
+  //   await this.performBackfill();
 
-    this.schedulerRegistry.addCronJob("updateAssetsPrice", job);
-    job.start();
-  }
+  //   const job = new CronJob(this.config.updateCron, async () => {
+  //     await this.performBackfill();
+  //   });
+
+  //   this.schedulerRegistry.addCronJob("updateAssetsPrice", job);
+  //   job.start();
+  // }
 
   async performBackfill() {
     const currentDate = dayjs();
 
     const symbols = await this.getAssetSymbols();
+
     const endTrackingDate = currentDate.startOf("minute");
+
     const stepMinutes = this.config.backfillStep;
 
     await Promise.all(
       symbols.map(async (symbol) => {
         const startTrackingFromDate = await this.determineStartTrackingDate(
           symbol,
-          currentDate,
+          currentDate
         );
 
         const gapSeconds = currentDate.diff(startTrackingFromDate, "seconds");
 
-        if (gapSeconds <= stepMinutes * 60) { // 
+        if (gapSeconds <= stepMinutes * 60) {
+          //
           console.log(
-            `No backfill needed for ${symbol}. Gap: ${
-              gapSeconds / 60
-            } minutes.`,
+            `No backfill needed for ${symbol}. Gap: ${Math.round(gapSeconds / 60)} minutes.`
           );
           return; // Skip backfill if no gap or gap is too small
         }
 
         console.log(
-          `Adding backfill job for ${symbol}: ${startTrackingFromDate.toISOString()} to ${endTrackingDate.toISOString()}`,
+          `Adding backfill job for ${symbol}: ${startTrackingFromDate.toISOString()} to ${endTrackingDate.toISOString()}`
         );
 
         await this.backfillService.addBackfillJob(
           symbol,
-          startTrackingFromDate.add(stepMinutes, "minutes").toDate(),
+          startTrackingFromDate.clone().add(stepMinutes, "minutes").toDate(),
           endTrackingDate.toDate(),
-          stepMinutes,
+          stepMinutes
         );
-      }),
+      })
     );
   }
 
@@ -102,24 +110,19 @@ export class PriceService extends PriceAbstract implements OnModuleInit {
     asset: string,
     from: Date,
     to: Date,
-    resolution: Resolution,
+    resolution: Resolution
   ): Promise<HistoricalPrice[]> {
     const provider = this.priceProviderRegistry.getProvider(asset);
 
     if (!provider) {
       throw new NotFoundException(
-        `No price provider found that supports asset: ${asset}`,
+        `No price provider found that supports asset: ${asset}`
       );
     }
 
     console.log(`Using provider '${provider.getName()}' for asset '${asset}'`);
 
-    return provider.getHistoricalPrice(
-      asset,
-      from,
-      to,
-      resolution,
-    );
+    return provider.getHistoricalPrice(asset, from, to, resolution);
   }
 
   async bulkInsert(prices: Price[]) {
@@ -133,7 +136,7 @@ export class PriceService extends PriceAbstract implements OnModuleInit {
 
   private async determineStartTrackingDate(
     asset: string,
-    currentDate: Dayjs,
+    currentDate: Dayjs
   ): Promise<dayjs.Dayjs> {
     const lastPriceTime = await this.priceRepository.findLatestTimestamp(asset);
     if (!lastPriceTime) {

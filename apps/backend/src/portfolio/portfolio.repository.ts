@@ -6,9 +6,10 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { UniqueIdentifier } from "@/connection/connection.abstract";
-import { Portfolio } from "./portfolio.types";
+import { PopulatedPortfolio, Portfolio } from "./portfolio.types";
 import { DatabaseService } from "@/database/database.service";
 import { sql } from "kysely";
+import { Connection } from "@/connection/connection.types";
 
 @Injectable()
 export class PortfolioRepository {
@@ -44,7 +45,7 @@ export class PortfolioRepository {
 
   async updateById(
     id: UniqueIdentifier,
-    payload: Partial<Portfolio>,
+    payload: Partial<Portfolio>
   ): Promise<Portfolio> {
     const result = await this.db.query
       .updateTable("portfolio")
@@ -63,7 +64,7 @@ export class PortfolioRepository {
 
   async deleteById(
     id: UniqueIdentifier,
-    userId: UniqueIdentifier,
+    userId: UniqueIdentifier
   ): Promise<boolean> {
     const result = await this.db.query
       .deleteFrom("portfolio")
@@ -99,7 +100,7 @@ export class PortfolioRepository {
 
   async findByIdAndUser(
     id: UniqueIdentifier,
-    userId: UniqueIdentifier,
+    userId: UniqueIdentifier
   ): Promise<Portfolio> {
     const result = await this.db.query
       .selectFrom("portfolio")
@@ -117,7 +118,7 @@ export class PortfolioRepository {
   async updateStatusById(
     portfolioId: string,
     userId: string,
-    status: Portfolio["status"],
+    status: Portfolio["status"]
   ): Promise<Portfolio> {
     const result = await this.db.query
       .updateTable("portfolio")
@@ -138,8 +139,9 @@ export class PortfolioRepository {
   }
 
   async findUnsynced(minutes: number): Promise<Portfolio[]> {
-    const thresholdTime = new Date(Date.now() - minutes * 60 * 1000)
-      .toISOString();
+    const thresholdTime = new Date(
+      Date.now() - minutes * 60 * 1000
+    ).toISOString();
 
     const results = await this.db.query
       .selectFrom("portfolio")
@@ -155,18 +157,18 @@ export class PortfolioRepository {
     return results.map(this.serialize);
   }
 
-  async findAllocation(
-    portfolioIds: string[],
-    userId: string,
-  ) {
+  async findAllocation(portfolioIds: string[], userId: string) {
     const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
 
     // Verify ownership of all portfolios
     await this.isOwner(ids, userId);
 
-    const result = await sql<
-      { id: string; title: string; balance: number; percentage: number }
-    >`
+    const result = await sql<{
+      id: string;
+      title: string;
+      balance: number;
+      percentage: number;
+    }>`
             WITH portfolio_balances AS (
                 SELECT 
                     p.id,
@@ -208,7 +210,7 @@ export class PortfolioRepository {
   }
   async findPortfolioAllocation(
     portfolioIds: string | string[],
-    userId: string,
+    userId: string
   ) {
     const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
 
@@ -262,7 +264,7 @@ export class PortfolioRepository {
 
   async findBalance(
     portfolioIds: UniqueIdentifier | UniqueIdentifier[],
-    userId: UniqueIdentifier,
+    userId: UniqueIdentifier
   ): Promise<number> {
     const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
 
@@ -300,7 +302,7 @@ export class PortfolioRepository {
     userId: string,
     startDate: Date,
     endDate: Date,
-    resolution: "hourly" | "daily" | "weekly" | "monthly",
+    resolution: "hourly" | "daily" | "weekly" | "monthly"
   ) {
     const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
     const interval = this.getResolutionInterval(resolution);
@@ -400,7 +402,7 @@ export class PortfolioRepository {
     portfolioId: string | string[],
     userId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<{
     asset: {
       symbol: string;
@@ -480,7 +482,7 @@ export class PortfolioRepository {
 
     if (result.rows.length === 0) {
       throw new NotFoundException(
-        "No assets found for the specified portfolios",
+        "No assets found for the specified portfolios"
       );
     }
 
@@ -506,7 +508,7 @@ export class PortfolioRepository {
     assetSymbol: string,
     startDate: Date,
     endDate: Date,
-    resolution: "hourly" | "daily" | "weekly" | "monthly",
+    resolution: "hourly" | "daily" | "weekly" | "monthly"
   ) {
     const interval = this.getResolutionInterval(resolution);
 
@@ -606,6 +608,99 @@ export class PortfolioRepository {
     };
   }
 
+  async populatePortfolio(
+    portfolioInput: Portfolio[] | Portfolio
+  ): Promise<PopulatedPortfolio[]> {
+    const portfolios: Portfolio[] = Array.isArray(portfolioInput)
+      ? portfolioInput
+      : [portfolioInput];
+
+    const portfolioIds = portfolios.map((p) => p.id);
+    const connectionNames = portfolios.map((p) => p.connection_name);
+
+    const statsResult = await sql`
+      WITH portfolio_values AS (
+        SELECT 
+          pa.portfolio_id,
+          pa.asset,
+          SUM(pa.amount * p.price) as total_value
+        FROM portfolio_assets pa
+        LEFT JOIN LATERAL (
+          SELECT price
+          FROM price
+          WHERE asset = pa.asset
+          ORDER BY time DESC
+          LIMIT 1
+        ) p ON true
+        WHERE pa.portfolio_id = ANY(${portfolioIds})
+        GROUP BY pa.portfolio_id, pa.asset
+      ),
+      portfolio_stats AS (
+        SELECT 
+          p.id,
+          COALESCE(SUM(pv.total_value), 0) as value,
+          COUNT(DISTINCT pv.asset) as asset_count,
+          array_agg(DISTINCT pv.asset) as assets
+        FROM portfolio p
+        LEFT JOIN portfolio_values pv ON p.id = pv.portfolio_id
+        WHERE p.id = ANY(${portfolioIds})
+        GROUP BY p.id
+      )
+      SELECT * FROM portfolio_stats
+    `.execute(this.db.query);
+
+    // Get connection data
+    const connectionsResult = await this.db.query
+      .selectFrom("connection")
+      .select(["name", "logo", "title", "type"])
+      .where("name", "in", connectionNames)
+      .execute();
+
+    type StatsRow = {
+      id: number;
+      value: number;
+      asset_count: number;
+      assets: string[];
+    };
+
+    const statsByPortfolioId = (statsResult.rows as StatsRow[]).reduce(
+      (acc: Record<number, StatsRow>, row) => {
+        acc[row.id] = row;
+        return acc;
+      },
+      {} as Record<number, StatsRow>
+    );
+
+    const connectionsByName = connectionsResult.reduce(
+      (acc, conn) => {
+        acc[conn.name] = {
+          name: conn.name,
+          logo: conn.logo,
+          title: conn.title,
+          type: conn.type,
+        };
+        return acc;
+      },
+      {} as Record<string, Pick<Connection, "logo" | "name" | "title" | "type">>
+    );
+
+    const populatedPortfolios = portfolios.map((portfolio) => {
+      const metadata = statsByPortfolioId[portfolio.id];
+      const connection = connectionsByName[portfolio.connection_name];
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { connection_name, ...portfolioWithoutConnectionName } = portfolio;
+
+      return {
+        ...portfolioWithoutConnectionName,
+        ...metadata,
+        connection,
+      };
+    });
+
+    return populatedPortfolios;
+  }
+
   private getResolutionInterval(resolution: string): string {
     const intervals = {
       hourly: "1 hour",
@@ -618,14 +713,18 @@ export class PortfolioRepository {
 
   async isOwner(
     portfolioId: UniqueIdentifier | UniqueIdentifier[],
-    userId: UniqueIdentifier,
+    userId: UniqueIdentifier
   ): Promise<boolean> {
     const ids = Array.isArray(portfolioId) ? portfolioId : [portfolioId];
 
     const portfolios = await this.db.query
       .selectFrom("portfolio")
       .select(["id", "user_id"])
-      .where("id", "in", ids.map((id) => `${id}`))
+      .where(
+        "id",
+        "in",
+        ids.map((id) => `${id}`)
+      )
       .execute();
 
     if (portfolios.length !== ids.length) {
@@ -633,13 +732,11 @@ export class PortfolioRepository {
     }
 
     const hasUnauthorizedAccess = portfolios.some(
-      (portfolio) => portfolio.user_id !== `${userId}`,
+      (portfolio) => portfolio.user_id !== `${userId}`
     );
 
     if (hasUnauthorizedAccess) {
-      throw new ForbiddenException(
-        "Not authorized to access this portfolio",
-      );
+      throw new ForbiddenException("Not authorized to access this portfolio");
     }
 
     return true;

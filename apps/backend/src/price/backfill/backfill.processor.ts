@@ -7,7 +7,7 @@ import { PriceService } from "../price.service";
 
 dayjs.extend(duration);
 
-@Processor("backfill", { concurrency: 5, lockDuration: 300000 })
+@Processor("backfill", { concurrency: 5, lockDuration: 30000 })
 export class BackfillProcessor extends WorkerHost {
   constructor(private readonly priceService: PriceService) {
     super();
@@ -19,7 +19,7 @@ export class BackfillProcessor extends WorkerHost {
     const timeTaken = dayjs.duration(timeTakenMs);
 
     console.log(
-      `job ${job.id} of type ${job.name} has been completed (${timeTaken.asSeconds()}s)`,
+      `job ${job.id} of type ${job.name} has been completed (${timeTaken.asSeconds()}s)`
     );
   }
 
@@ -27,14 +27,14 @@ export class BackfillProcessor extends WorkerHost {
     const { asset, from, to, resolution } = job.data;
 
     console.log(
-      `Backfilling for ${asset} from ${from} to ${to} with the resolution of ${resolution} minutes`,
+      `Backfilling for ${asset} from ${from} to ${to} with the resolution of ${resolution} minutes`
     );
     try {
       const historicalPrices = await this.priceService.getAssetHistoricalPrice(
         asset,
         new Date(from),
         new Date(to),
-        resolution,
+        resolution
       );
 
       await this.priceService.bulkInsert(historicalPrices);

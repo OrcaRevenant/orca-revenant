@@ -3,43 +3,55 @@ import { Injectable, UnauthorizedException } from "@nestjs/common";
 
 @Injectable()
 export class AuthService {
-    constructor(private readonly supabaseService: SupabaseService) {
+  constructor(private readonly supabaseService: SupabaseService) {}
+
+  async getProfile(token: string) {
+    const supabase = this.supabaseService.getClient();
+
+    const { data, error } = await supabase.auth.getUser(token);
+
+    if (error) {
+      throw new UnauthorizedException(error.message);
     }
 
-    async getProfile(token: string) {
-        const supabase = this.supabaseService.getClient();
+    return data.user;
+  }
 
-        const { data, error } = await supabase.auth.getUser(token);
+  async signUp(email: string, password: string) {
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase.auth.signUp({ email, password });
 
-        if (error) {
-            throw new UnauthorizedException(error.message);
-        }
-
-        return data.user;
+    if (error) {
+      throw new UnauthorizedException(error.message);
     }
 
-    async signUp(email: string, password: string) {
-        const supabase = this.supabaseService.getClient();
-        const { data, error } = await supabase.auth.signUp({ email, password });
+    return data;
+  }
 
-        if (error) {
-            throw new UnauthorizedException(error.message);
-        }
+  async signIn(email: string, password: string) {
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-        return data;
+    if (error) {
+      throw new UnauthorizedException(error.message);
     }
 
-    async signIn(email: string, password: string) {
-        const supabase = this.supabaseService.getClient();
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+    return data;
+  }
 
-        if (error) {
-            throw new UnauthorizedException(error.message);
-        }
+  async renewToken(refreshToken: string) {
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase.auth.refreshSession({
+      refresh_token: refreshToken
+    });
 
-        return data;
+    if (error) {
+      throw new UnauthorizedException(error.message);
     }
+
+    return data;
+  }
 }
