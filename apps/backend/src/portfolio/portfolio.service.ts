@@ -1,11 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import { PortfolioRepository } from "./portfolio.repository";
-import { CreatePortfolioDto, UpdatePortfolioDto } from "./dto";
 import { PortfolioSyncService } from "@/portfolio/portfolio-sync/portfolio-sync.service";
 import { PageOptionsDto } from "@/pagination/dto";
-import { Portfolio } from "./portfolio.types";
+import { PopulatedPortfolio, Portfolio, Timeframe } from "./portfolio.types";
 import { PortfolioAssetService } from "./portfolio-asset/portfolio-asset.service";
 import { TransactionService } from "@/transaction/transaction.service";
+import { CreatePortfolioDto, UpdatePortfolioDto } from "./portfolio.dto";
+import { calculateDateRange } from "./portfolio.utils";
 
 @Injectable()
 export class PortfolioService {
@@ -57,12 +58,27 @@ export class PortfolioService {
     );
   }
 
+  async getHistoricalBalanceStrict(
+    id: string | string[],
+    userId: string,
+    timeframe: Timeframe
+  ) {
+    const { startDate, endDate, resolution } = calculateDateRange(timeframe);
+    return this.getHistoricalBalance(
+      id,
+      userId,
+      startDate,
+      endDate,
+      resolution
+    );
+  }
+
   async getHistoricalBalance(
     id: string | string[],
     userId: string,
     startDate: Date,
     endDate: Date,
-    resolution: "hourly" | "daily"
+    resolution: string
   ) {
     return this.portfolioRepository.findBalanceHistory(
       id,
@@ -71,6 +87,15 @@ export class PortfolioService {
       endDate,
       resolution
     );
+  }
+
+  async getAssetPerformanceStrict(
+    id: string | string[],
+    userId: string,
+    timeframe: Timeframe
+  ) {
+    const { startDate, endDate } = calculateDateRange(timeframe);
+    return this.getAssetPerformance(id, userId, startDate, endDate);
   }
 
   async getAssetPerformance(
@@ -114,13 +139,20 @@ export class PortfolioService {
 
   async getAll(): Promise<Portfolio[]> {
     const portfolios = await this.portfolioRepository.findAll();
-
     return portfolios;
+  }
+  async getAllPopulated(): Promise<PopulatedPortfolio[]> {
+    const portfolios = await this.portfolioRepository.findAll();
+    return this.portfolioRepository.populatePortfolio(portfolios);
   }
 
   async findByUserId(userId: string): Promise<Portfolio[]> {
     const portfolio = await this.portfolioRepository.findByUser(userId);
     return portfolio;
+  }
+  async findByUserIdPopulated(userId: string): Promise<PopulatedPortfolio[]> {
+    const portfolio = await this.findByUserId(userId);
+    return this.portfolioRepository.populatePortfolio(portfolio);
   }
 
   async getStatus(id: string, userId: string) {
@@ -142,6 +174,15 @@ export class PortfolioService {
     return portfolio;
   }
 
+  async getByIdPopulated(
+    id: string,
+    userId: string
+  ): Promise<PopulatedPortfolio> {
+    const portfolio = await this.getById(id, userId);
+    const result = await this.portfolioRepository.populatePortfolio(portfolio);
+    return result[0];
+  }
+
   async create(createPortfolioDto: CreatePortfolioDto, userId: string) {
     const portfolio = await this.portfolioRepository.insert({
       meta: createPortfolioDto.meta,
@@ -153,7 +194,8 @@ export class PortfolioService {
 
     await this.portfolioSyncService.enqueueSyncJob(portfolio);
 
-    return portfolio;
+    const result = await this.portfolioRepository.populatePortfolio(portfolio);
+    return result[0];
   }
 
   async update(
@@ -171,7 +213,8 @@ export class PortfolioService {
 
     await this.portfolioSyncService.enqueueSyncJob(portfolio);
 
-    return portfolio;
+    const result = await this.portfolioRepository.populatePortfolio(portfolio);
+    return result[0];
   }
 
   async remove(id: string, userId: string) {
@@ -183,11 +226,14 @@ export class PortfolioService {
     userId: string,
     status: Portfolio["status"]
   ) {
-    return this.portfolioRepository.updateStatusById(
+    const portfolio = await this.portfolioRepository.updateStatusById(
       portfolioId,
       userId,
       status
     );
+
+    const result = await this.portfolioRepository.populatePortfolio(portfolio);
+    return result[0];
   }
 
   async isOwner(portfolioId: string, userId: string): Promise<boolean> {

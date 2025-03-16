@@ -1,6 +1,6 @@
 import { Body, Controller, Post, Req, UseGuards } from "@nestjs/common";
 import { FeedbackService } from "./feedback.service";
-import { CreateFeedbackDto } from "./dto/create-feedback.dto";
+import { CreateFeedbackDto } from "./feedback.dto";
 import { AuthUserRequest } from "@/shared/types/request.types";
 import { JwtGuard } from "@/auth/jwt.guard";
 

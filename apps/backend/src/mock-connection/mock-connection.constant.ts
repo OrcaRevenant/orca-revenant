@@ -86,6 +86,25 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
                     },
                 ],
             },
+            {
+                connection_name: "mock",
+                title: "Adam 3rd Portfolio",
+                color: "#a11043",
+                disabled: false,
+                group_id: null,
+                meta: {
+                    api_key: "mock-api-key-3",
+                },
+                transactions: [
+                    {
+                        id: "00",
+                        amount: 1000,
+                        asset: "usdt",
+                        time: "2023-01-01T00:00:00Z",
+                        type: "deposit",
+                    },
+                ],
+            },
         ],
     },
 ];

@@ -1,18 +1,32 @@
 import { DatabaseService } from "@/database/database.service";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { sql } from "kysely";
-import { GroupUniqueIdentifier } from "./portfolio-group.types";
+import {
+  PortfolioGroup,
+  PortfolioGroupUniqueIdentifier,
+} from "./portfolio-group.types";
 
 @Injectable()
 export class PortfolioGroupRepository {
-    constructor(private readonly db: DatabaseService) {}
+  constructor(private readonly db: DatabaseService) {}
 
-    async findById(
-        groupId: GroupUniqueIdentifier,
-        userId: string,
-    ): Promise<any[]> {
-        if (groupId === "root") {
-            const result = await sql`
+  private serialize(group: any): PortfolioGroup {
+    return {
+      id: group.id,
+      title: group.title,
+      color: group.color,
+      user_id: group.user_id,
+      parent_id: group.parent_id,
+      created_at: group.created_at,
+    };
+  }
+
+  async findByIdAndUser(
+    groupId: PortfolioGroupUniqueIdentifier,
+    userId: string
+  ): Promise<any[]> {
+    if (groupId === "root") {
+      const result = await sql`
                     WITH RECURSIVE group_hierarchy AS (
                     -- Get all groups
                     SELECT id, parent_id
@@ -33,9 +47,9 @@ export class PortfolioGroupRepository {
                     ORDER BY p.id;
                 `.execute(this.db.query);
 
-            return result.rows;
-        } else {
-            const groupExists = await sql<any>`
+      return result.rows;
+    } else {
+      const groupExists = await sql<any>`
                     SELECT EXISTS (
                     SELECT 1 
                     FROM portfolio_group 
@@ -44,13 +58,11 @@ export class PortfolioGroupRepository {
                     ) as exists
                 `.execute(this.db.query);
 
-            if (!groupExists.rows[0].exists) {
-                throw new NotFoundException(
-                    `Group with id ${groupId} not found`,
-                );
-            }
+      if (!groupExists.rows[0].exists) {
+        throw new NotFoundException(`Group with id ${groupId} not found`);
+      }
 
-            const result = await sql`
+      const result = await sql`
                     WITH RECURSIVE group_hierarchy AS (
                     -- Base case: start with the specified group
                     SELECT id, parent_id
@@ -81,78 +93,17 @@ export class PortfolioGroupRepository {
                     ORDER BY p.id;
                 `.execute(this.db.query);
 
-            return result.rows;
-        }
+      return result.rows;
     }
+  }
 
-    async findAll(userId: string) {
-        // Get portfolio values and asset counts with overall totals
-        const stats = await sql`
-            WITH portfolio_values AS (
-                SELECT 
-                    pa.portfolio_id,
-                    pa.asset,
-                    SUM(pa.amount * p.price) as total_value
-                FROM portfolio_assets pa
-                LEFT JOIN LATERAL (
-                    SELECT price
-                    FROM price
-                    WHERE asset = pa.asset
-                    ORDER BY time DESC
-                    LIMIT 1
-                ) p ON true
-                GROUP BY pa.portfolio_id, pa.asset
-            ),
-            portfolio_stats AS (
-                SELECT 
-                    p.id,
-                    p.title,
-                    p.color,
-                    p.connection_name,
-                    p.status,
-                    p.disabled,
-                    p.group_id,
-                    COALESCE(SUM(pv.total_value), 0) as value,
-                    COUNT(DISTINCT pv.asset) as asset_count,
-                    array_agg(DISTINCT pv.asset) as assets
-                FROM portfolio p
-                LEFT JOIN portfolio_values pv ON p.id = pv.portfolio_id
-                WHERE p.user_id = ${userId}
-                GROUP BY p.id, p.title, p.color, p.connection_name, p.status, p.disabled, p.group_id
-            ),
-            unique_assets AS (
-                SELECT DISTINCT asset
-                FROM portfolio_values pv
-                INNER JOIN portfolio p ON p.id = pv.portfolio_id
-                WHERE p.user_id = ${userId}
-            ),
-            global_stats AS (
-                SELECT 
-                    SUM(value) as total_value,
-                    (SELECT COUNT(*) FROM unique_assets) as total_unique_assets,
-                    COUNT(*) as total_portfolios
-                FROM portfolio_stats
-            )
-            SELECT 
-                jsonb_build_object(
-                    'portfolios', (SELECT jsonb_agg(ps.*) FROM portfolio_stats ps),
-                    'global_stats', (SELECT row_to_json(gs.*) FROM global_stats gs)
-                ) as result
-        `.execute(this.db.query);
+  async findByUser(userId: string): Promise<PortfolioGroup[]> {
+    const groups = await this.db.query
+      .selectFrom("portfolio_group")
+      .selectAll()
+      .where("user_id", "=", userId)
+      .execute();
 
-        // Get all groups
-        const groups = await this.db.query
-            .selectFrom("portfolio_group")
-            .selectAll()
-            .where("user_id", "=", userId)
-            .execute();
-
-        const { portfolios, global_stats } = (stats.rows[0] as any).result;
-
-        return {
-            groups,
-            portfolios,
-            global_stats,
-        };
-    }
+    return groups.map(this.serialize);
+  }
 }

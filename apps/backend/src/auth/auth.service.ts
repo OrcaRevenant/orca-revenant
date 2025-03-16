@@ -45,7 +45,7 @@ export class AuthService {
   async renewToken(refreshToken: string) {
     const supabase = this.supabaseService.getClient();
     const { data, error } = await supabase.auth.refreshSession({
-      refresh_token: refreshToken
+      refresh_token: refreshToken,
     });
 
     if (error) {

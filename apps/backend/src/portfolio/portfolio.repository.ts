@@ -27,39 +27,75 @@ export class PortfolioRepository {
       user_id: `${portfolio.user_id}`,
       color: `${portfolio.color}`,
       status: portfolio.status,
+      group_id: portfolio.group_id,
     };
   }
 
-  async insert(payload: Partial<Portfolio>): Promise<Portfolio> {
-    const result = await this.db.query
-      .insertInto("portfolio")
-      .values(payload as any)
-      .returningAll()
-      .executeTakeFirst();
+  private serializePopulated(portfolio: any): PopulatedPortfolio {
+    return {
+      created_at: portfolio.created_at,
+      disabled: !!portfolio.disabled,
+      id: `${portfolio.id}`,
+      last_sync_at: portfolio.last_sync_at,
+      title: portfolio.title,
+      user_id: `${portfolio.user_id}`,
+      color: `${portfolio.color}`,
+      status: portfolio.status,
+      group_id: portfolio.group_id,
+      meta: portfolio.meta,
+      connection: portfolio.connection,
+      value: portfolio.value,
+      asset_count: portfolio.asset_count,
+      assets: portfolio.assets,
+    };
+  }
 
-    if (!result) {
-      throw new Error("Error creating portfolio");
+  private async executePortfolioOperation<T>(
+    operation: (query: any) => Promise<any>,
+    errorMessage: string
+  ): Promise<T> {
+    try {
+      const result = await operation(this.db.query);
+      if (!result) {
+        throw new Error(errorMessage);
+      }
+      return result;
+    } catch (error) {
+      throw error instanceof HttpException
+        ? error
+        : new Error(`${errorMessage}: ${(error as Error).message}`);
     }
-    return this.serialize(result);
+  }
+
+  async insert(payload: Partial<Portfolio>): Promise<Portfolio> {
+    return this.executePortfolioOperation<Portfolio>(
+      (query) =>
+        query
+          .insertInto("portfolio")
+          .values(payload as any)
+          .returningAll()
+          .executeTakeFirst()
+          .then((result) => this.serialize(result)),
+      "Error creating portfolio"
+    );
   }
 
   async updateById(
     id: UniqueIdentifier,
     payload: Partial<Portfolio>
   ): Promise<Portfolio> {
-    const result = await this.db.query
-      .updateTable("portfolio")
-      .set(payload as any)
-      .where("id", "=", `${id}`)
-      .where("user_id", "=", payload.user_id)
-      .returningAll()
-      .executeTakeFirst();
-
-    if (!result) {
-      throw new Error("Error updating portfolio");
-    }
-
-    return this.serialize(result);
+    return this.executePortfolioOperation<Portfolio>(
+      (query) =>
+        query
+          .updateTable("portfolio")
+          .set(payload as any)
+          .where("id", "=", `${id}`)
+          .where("user_id", "=", payload.user_id)
+          .returningAll()
+          .executeTakeFirst()
+          .then((result) => this.serialize(result)),
+      "Error updating portfolio"
+    );
   }
 
   async deleteById(
@@ -157,109 +193,75 @@ export class PortfolioRepository {
     return results.map(this.serialize);
   }
 
-  async findAllocation(portfolioIds: string[], userId: string) {
-    const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
-
-    // Verify ownership of all portfolios
-    await this.isOwner(ids, userId);
-
-    const result = await sql<{
-      id: string;
-      title: string;
-      balance: number;
-      percentage: number;
-    }>`
-            WITH portfolio_balances AS (
-                SELECT 
-                    p.id,
-                    p.title,
-                    COALESCE(SUM(pa.amount * price.price), 0) as balance
-                FROM portfolio p
-                LEFT JOIN portfolio_assets pa ON pa.portfolio_id = p.id
-                LEFT JOIN LATERAL (
-                    SELECT price
-                    FROM price
-                    WHERE asset = pa.asset
-                    ORDER BY time DESC
-                    LIMIT 1
-                ) price ON true
-                WHERE p.id = ANY(${ids})
-                GROUP BY p.id, p.title
-            ),
-            total_balance AS (
-                SELECT SUM(balance) as total FROM portfolio_balances
-            )
-            SELECT 
-                pb.id,
-              pb.title,
-                pb.balance::text,
-                (pb.balance / NULLIF(tb.total, 0) * 100)::text as percentage
-            FROM portfolio_balances pb
-            CROSS JOIN total_balance tb
-            ORDER BY pb.balance DESC;
-        `.execute(this.db.query);
-
-    return result.rows.map((row) => ({
-      portfolio: {
-        id: row.id,
-        title: row.title,
-      },
-      balance: Number(row.balance),
-      percentage: Number(row.percentage),
-    }));
-  }
-  async findPortfolioAllocation(
-    portfolioIds: string | string[],
-    userId: string
-  ) {
-    const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
-
-    await this.isOwner(ids, userId);
-
-    const result = await sql<{
+  private getPortfolioBalanceQuery(portfolioIds: string[]) {
+    return sql<{
       id: string;
       title: string;
       balance: string;
       percentage: string;
     }>`
-        WITH portfolio_balances AS (
-            SELECT 
-                p.id,
-                p.title,
-                COALESCE(SUM(pa.amount * price.price), 0) as balance
-            FROM portfolio p
-            LEFT JOIN portfolio_assets pa ON pa.portfolio_id = p.id
-            LEFT JOIN LATERAL (
-                SELECT price
-                FROM price
-                WHERE asset = pa.asset
-                ORDER BY time DESC
-                LIMIT 1
-            ) price ON true
-            WHERE p.id = ANY(${ids})
-            GROUP BY p.id, p.title
-        ),
-        total_balance AS (
-            SELECT SUM(balance) as total FROM portfolio_balances
-        )
-        SELECT 
-            pb.id,
-            pb.title,
-            pb.balance::text,
-            (pb.balance / NULLIF(tb.total, 0) * 100)::text as percentage
-        FROM portfolio_balances pb
-        CROSS JOIN total_balance tb
-        ORDER BY pb.balance DESC;
-    `.execute(this.db.query);
+      WITH portfolio_balances AS (
+          SELECT 
+              p.id,
+              p.title,
+              COALESCE(SUM(pa.amount * price.price), 0) as balance
+          FROM portfolio p
+          LEFT JOIN portfolio_assets pa ON pa.portfolio_id = p.id
+          LEFT JOIN LATERAL (
+              SELECT price
+              FROM price
+              WHERE asset = pa.asset
+              ORDER BY time DESC
+              LIMIT 1
+          ) price ON true
+          WHERE p.id = ANY(${portfolioIds})
+          GROUP BY p.id, p.title
+      ),
+      total_balance AS (
+          SELECT SUM(balance) as total FROM portfolio_balances
+      )
+      SELECT 
+          pb.id,
+          pb.title,
+          pb.balance::text,
+          (pb.balance / NULLIF(tb.total, 0) * 100)::text as percentage
+      FROM portfolio_balances pb
+      CROSS JOIN total_balance tb
+      ORDER BY pb.balance DESC;
+    `;
+  }
+
+  async findPortfolioAllocation(
+    portfolioIds: string | string[],
+    userId: string
+  ): Promise<
+    Array<{
+      portfolio: {
+        id: string;
+        title: string;
+      };
+      balance: number;
+      percentage: number;
+    }>
+  > {
+    const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
+    await this.isOwner(ids, userId);
+
+    const query = this.getPortfolioBalanceQuery(ids);
+    const result = await query.execute(this.db.query);
 
     return result.rows.map((row) => ({
       portfolio: {
-        id: row.id,
-        title: row.title,
+        id: String(row.id),
+        title: String(row.title || ""),
       },
-      balance: Number(row.balance),
-      percentage: Number(row.percentage),
+      balance: Number(row.balance || 0),
+      percentage: Number(row.percentage || 0),
     }));
+  }
+
+  async findAllocation(portfolioIds: string[], userId: string) {
+    return this.findPortfolioAllocation(portfolioIds, userId);
   }
 
   async findBalance(
@@ -294,7 +296,10 @@ export class PortfolioRepository {
         FROM portfolio_balances;
     `.execute(this.db.query);
 
-    return Number((result.rows[0] as any)?.total_value || 0);
+    // Add type safety for the result
+    type BalanceResult = { total_value: string; found_portfolios: number };
+    const firstRow = result.rows[0] as BalanceResult | undefined;
+    return Number(firstRow?.total_value || 0);
   }
 
   async findBalanceHistory(
@@ -302,10 +307,10 @@ export class PortfolioRepository {
     userId: string,
     startDate: Date,
     endDate: Date,
-    resolution: "hourly" | "daily" | "weekly" | "monthly"
+    resolution: string
   ) {
     const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
-    const interval = this.getResolutionInterval(resolution);
+    const interval = resolution;
 
     await this.isOwner(ids, userId);
 
@@ -582,11 +587,28 @@ export class PortfolioRepository {
       throw new NotFoundException("Asset not found in portfolio");
     }
 
-    const firstRow = result.rows[0] as any;
-    const priceHistory = result.rows.map((row: any) => ({
+    // Define proper types for the result
+    type AssetPriceRow = {
+      symbol: string;
+      name: string;
+      logo: string;
+      time: Date;
+      price: string;
+      value: string;
+      start_price: string;
+      end_price: string;
+      high_price: string;
+      low_price: string;
+      price_change: string;
+      percentage_change: string;
+      pnl: string;
+    };
+
+    const firstRow = result.rows[0] as AssetPriceRow;
+    const priceHistory = result.rows.map((row: AssetPriceRow) => ({
       time: row.time,
-      price: Number(row.price),
-      value: Number(row.value),
+      price: Number(row.price || 0),
+      value: Number(row.value || 0),
     }));
 
     return {
@@ -597,13 +619,13 @@ export class PortfolioRepository {
       },
       priceHistory,
       performanceMetrics: {
-        startPrice: Number(firstRow.start_price),
-        endPrice: Number(firstRow.end_price),
-        highPrice: Number(firstRow.high_price),
-        lowPrice: Number(firstRow.low_price),
-        priceChange: Number(firstRow.price_change),
-        percentageChange: Number(firstRow.percentage_change),
-        pnl: Number(firstRow.pnl),
+        startPrice: Number(firstRow.start_price || 0),
+        endPrice: Number(firstRow.end_price || 0),
+        highPrice: Number(firstRow.high_price || 0),
+        lowPrice: Number(firstRow.low_price || 0),
+        priceChange: Number(firstRow.price_change || 0),
+        percentageChange: Number(firstRow.percentage_change || 0),
+        pnl: Number(firstRow.pnl || 0),
       },
     };
   }
@@ -615,10 +637,82 @@ export class PortfolioRepository {
       ? portfolioInput
       : [portfolioInput];
 
-    const portfolioIds = portfolios.map((p) => p.id);
-    const connectionNames = portfolios.map((p) => p.connection_name);
+    if (portfolios.length === 0) {
+      return [];
+    }
 
-    const statsResult = await sql`
+    const portfolioIds = portfolios.map((p) => p.id);
+
+    const result: PopulatedPortfolio[] = portfolios.map((portfolio) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { connection_name, ...portfolioWithoutConnectionName } = portfolio;
+      return {
+        ...portfolioWithoutConnectionName,
+        connection: null,
+        value: 0,
+        asset_count: 0,
+        assets: [],
+      };
+    });
+
+    const statsResult = await this.getPortfolioStats(portfolioIds);
+
+    type PortfolioStats = {
+      id: string;
+      value: number;
+      asset_count: number;
+      assets: string[];
+    };
+
+    const statsByPortfolioId = statsResult.reduce(
+      (acc, row) => {
+        acc[row.id] = row;
+        return acc;
+      },
+      {} as Record<string, PortfolioStats>
+    );
+
+    result.forEach((portfolio) => {
+      const stats = statsByPortfolioId[portfolio.id];
+      if (stats) {
+        portfolio.value = stats.value;
+        portfolio.asset_count = stats.asset_count;
+        portfolio.assets = stats.assets;
+      }
+    });
+
+    const connectionNames = portfolios
+      .map((p) => p.connection_name)
+      .filter(Boolean);
+    if (connectionNames.length > 0) {
+      const connections = await this.getConnectionsByNames(connectionNames);
+
+      result.forEach((portfolio, index) => {
+        const connectionName = portfolios[index].connection_name;
+        if (connectionName) {
+          portfolio.connection = connections[connectionName] || null;
+        }
+      });
+    }
+
+    return result.map(this.serializePopulated);
+  }
+
+  private async getPortfolioStats(portfolioIds: string[]): Promise<
+    Array<{
+      id: string;
+      value: number;
+      asset_count: number;
+      assets: string[];
+    }>
+  > {
+    // Add type parameter to sql template literal
+    const statsResult = await sql<{
+      id: string | number;
+      value: string | number | null;
+      asset_count: string | number | null;
+      assets: string[] | null;
+    }>`
       WITH portfolio_values AS (
         SELECT 
           pa.portfolio_id,
@@ -649,60 +743,44 @@ export class PortfolioRepository {
       SELECT * FROM portfolio_stats
     `.execute(this.db.query);
 
-    // Get connection data
+    // Transform the raw SQL results to the expected type with proper null handling
+    return statsResult.rows.map((row) => ({
+      id: String(row.id),
+      value: Number(row.value || 0),
+      asset_count: Number(row.asset_count || 0),
+      assets: Array.isArray(row.assets) ? row.assets : [],
+    }));
+  }
+
+  private async getConnectionsByNames(
+    connectionNames: string[]
+  ): Promise<
+    Record<string, Pick<Connection, "logo" | "name" | "title" | "type">>
+  > {
     const connectionsResult = await this.db.query
       .selectFrom("connection")
       .select(["name", "logo", "title", "type"])
       .where("name", "in", connectionNames)
       .execute();
 
-    type StatsRow = {
-      id: number;
-      value: number;
-      asset_count: number;
-      assets: string[];
-    };
-
-    const statsByPortfolioId = (statsResult.rows as StatsRow[]).reduce(
-      (acc: Record<number, StatsRow>, row) => {
-        acc[row.id] = row;
-        return acc;
-      },
-      {} as Record<number, StatsRow>
-    );
-
-    const connectionsByName = connectionsResult.reduce(
+    return connectionsResult.reduce(
       (acc, conn) => {
-        acc[conn.name] = {
-          name: conn.name,
-          logo: conn.logo,
-          title: conn.title,
-          type: conn.type,
-        };
+        if (conn.name) {
+          acc[conn.name] = {
+            name: conn.name,
+            logo: conn.logo || null,
+            title: conn.title || null,
+            type: conn.type || null,
+          };
+        }
         return acc;
       },
       {} as Record<string, Pick<Connection, "logo" | "name" | "title" | "type">>
     );
-
-    const populatedPortfolios = portfolios.map((portfolio) => {
-      const metadata = statsByPortfolioId[portfolio.id];
-      const connection = connectionsByName[portfolio.connection_name];
-
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { connection_name, ...portfolioWithoutConnectionName } = portfolio;
-
-      return {
-        ...portfolioWithoutConnectionName,
-        ...metadata,
-        connection,
-      };
-    });
-
-    return populatedPortfolios;
   }
 
   private getResolutionInterval(resolution: string): string {
-    const intervals = {
+    const intervals: Record<string, string> = {
       hourly: "1 hour",
       daily: "1 day",
       weekly: "1 week",

@@ -20,9 +20,9 @@ export class AssetRepository {
     assetSymbol: string,
     startDate: Date,
     endDate: Date,
-    resolution: "hourly" | "daily" | "weekly" | "monthly",
+    resolution: string
   ) {
-    const interval = this.getResolutionInterval(resolution);
+    const interval = resolution;
 
     const result = await sql`
       WITH 
@@ -75,15 +75,5 @@ export class AssetRepository {
     }));
 
     return priceHistory;
-  }
-
-  private getResolutionInterval(resolution: string): string {
-    const intervals = {
-      hourly: "1 hour",
-      daily: "1 day",
-      weekly: "1 week",
-      monthly: "1 month",
-    };
-    return intervals[resolution] || "1 day";
   }
 }
