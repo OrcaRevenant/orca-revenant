@@ -4,40 +4,41 @@ import { DatabaseService } from "@/database/database.service";
 
 @Injectable()
 export class ConnectionRepository {
-    constructor(private readonly db: DatabaseService) {}
+  constructor(private readonly db: DatabaseService) {}
 
-    private serialize(connection: any): Connection {
-        return {
-            created_at: connection.created_at,
-            description: connection.description,
-            enabled: connection.enabled,
-            logo: connection.logo,
-            name: connection.name,
-            title: connection.title,
-            type: connection.type,
-        };
+  private serialize(connection: any): Connection {
+    return {
+      created_at: connection.created_at,
+      description: connection.description,
+      enabled: connection.enabled,
+      logo: connection.logo,
+      name: connection.name,
+      title: connection.title,
+      type: connection.type,
+      schema: connection.schema,
+    };
+  }
+
+  async findAll(): Promise<Connection[]> {
+    const results = await this.db.query
+      .selectFrom("connection")
+      .selectAll()
+      .execute();
+
+    return results.map(this.serialize);
+  }
+
+  async findByName(name: string): Promise<Connection> {
+    const result = await this.db.query
+      .selectFrom("connection")
+      .selectAll()
+      .where("name", "=", name)
+      .executeTakeFirst();
+
+    if (!result) {
+      throw new Error(`Connection with name '${name}' not found.`);
     }
 
-    async findAll(): Promise<Connection[]> {
-        const results = await this.db.query
-            .selectFrom("connection")
-            .selectAll()
-            .execute();
-
-        return results.map(this.serialize);
-    }
-
-    async findByName(name: string): Promise<Connection> {
-        const result = await this.db.query
-            .selectFrom("connection")
-            .selectAll()
-            .where("name", "=", name)
-            .executeTakeFirst();
-
-        if (!result) {
-            throw new Error(`Connection with name '${name}' not found.`);
-        }
-
-        return this.serialize(result);
-    }
+    return this.serialize(result);
+  }
 }

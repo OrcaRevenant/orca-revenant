@@ -14,175 +14,162 @@ import { PortfolioAssetService } from "../portfolio-asset/portfolio-asset.servic
 
 @Injectable()
 export class PortfolioSyncService {
-    constructor(
-        @Inject(
-            forwardRef(() => PortfolioService),
-        ) private readonly portfolioService: PortfolioService,
-        private readonly connectionFactory: ConnectionFactory,
-        private readonly transactionService: TransactionService,
-        private readonly assetService: AssetService,
-        private readonly portfolioEventService: PortfolioEventService,
-        private readonly portfolioAssetService: PortfolioAssetService,
-        @InjectQueue("portfolio-sync") private readonly queue: Queue,
-    ) {}
+  constructor(
+    @Inject(forwardRef(() => PortfolioService))
+    private readonly portfolioService: PortfolioService,
+    private readonly connectionFactory: ConnectionFactory,
+    private readonly transactionService: TransactionService,
+    private readonly assetService: AssetService,
+    private readonly portfolioEventService: PortfolioEventService,
+    private readonly portfolioAssetService: PortfolioAssetService,
+    @InjectQueue("portfolio-sync") private readonly queue: Queue
+  ) {}
 
-    @OnEvent("backfill.completed")
-    async onPriceBackfillCompleted() {
-        this.syncInitialPortfolios();
+  @OnEvent("backfill.completed")
+  async onPriceBackfillCompleted() {
+    this.syncInitialPortfolios();
+  }
+
+  async enqueueSyncJob(portfolio: Portfolio) {
+    await this.queue.add(`sync-portfolio-${portfolio.id}`, portfolio, {
+      attempts: 3,
+      backoff: 5000,
+    });
+  }
+
+  async sync(portfolio: Portfolio) {
+    if (!portfolio) throw Error(`Prtfolio not provided`);
+
+    await this.updateStatusAndSendEvent(portfolio, `syncing`);
+
+    // await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    const supportedAssets = await this.assetService.getAll();
+
+    try {
+      await Promise.all([
+        this.syncAssets(portfolio, supportedAssets),
+        this.syncTransactions(portfolio, supportedAssets),
+      ]);
+
+      await this.updateStatusAndSendEvent(portfolio, `active`);
+    } catch (error) {
+      await this.updateStatusAndSendEvent(portfolio, `inactive`);
+      console.error("Error syncing portfolio:", error.message);
+    }
+  }
+
+  async updateStatusAndSendEvent(
+    portfolio: Portfolio,
+    status: PortfolioStatus
+  ) {
+    await this.portfolioService.updateStatusById(
+      portfolio.id,
+      portfolio.user_id,
+      status
+    );
+
+    this.portfolioEventService.sendEvent({
+      portfolioId: `${portfolio.id}`,
+      userId: portfolio.user_id,
+      status,
+    });
+  }
+
+  private async syncAssets(portfolio: Portfolio, supportedAssets: Asset[]) {
+    const connection = this.connectionFactory.getConnection(
+      portfolio.connection_name
+    );
+
+    const assets = await connection.getAssets(portfolio.meta);
+
+    const supportedSymbols = new Set(
+      supportedAssets.flatMap((asset) => [
+        asset.symbol,
+        ...(asset.alt_names || []),
+      ])
+    );
+
+    const assetsToInsert = assets
+      .filter((v) => supportedSymbols.has(v.symbol))
+      .map((v) => ({
+        asset: v.symbol,
+        amount: v.balance,
+        portfolio_id: portfolio.id,
+      }));
+
+    if (assetsToInsert.length > 0) {
+      await this.portfolioAssetService.insert(assetsToInsert);
+      console.log(
+        `Assets inserted successfully (${assetsToInsert.length} records)`
+      );
+    } else {
+      console.log("No supported assets to insert");
+    }
+  }
+
+  private async syncTransactions(
+    portfolio: Portfolio,
+    supportedAssets: Asset[]
+  ) {
+    const connection = this.connectionFactory.getConnection(
+      portfolio.connection_name
+    );
+
+    const transactions = (
+      await connection.getTransactions(portfolio.meta)
+    ).sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+    const supportedSymbols = new Set(
+      supportedAssets.flatMap((asset) => [
+        asset.symbol,
+        ...(asset.alt_names || []),
+      ])
+    );
+
+    const transactionsToInsert = transactions
+      .filter((v) => {
+        return supportedSymbols.has(v.asset.toLowerCase());
+      })
+      .map((v) => ({
+        amount: v.amount,
+        asset: v.asset,
+        time: v.time,
+        type: v.type,
+        portfolio_id: portfolio.id,
+        hash: generateTransactionHash(v.id),
+      }));
+
+    // Insert transactions into the database
+    if (transactionsToInsert.length > 0) {
+      await this.transactionService.insert(transactionsToInsert);
+      console.log(
+        `Transactions inserted successfully (${transactionsToInsert.length} records)`
+      );
+    } else {
+      console.log("No supported transactions to insert");
+    }
+  }
+
+  private async syncInitialPortfolios(syncThresholdMinutes: number = 60) {
+    // const portfolios = await this.portfolioService
+    //     .getUnsynced(syncThresholdMinutes);
+    const portfolios = await this.portfolioService.getAll();
+
+    if (portfolios.length > 0) {
+      console.log(`Syncing ${portfolios.length} portfolios...`);
+    } else {
+      console.log(`No portfolios to sync`);
     }
 
-    async enqueueSyncJob(portfolio: Portfolio) {
-        await this.queue.add(`sync-portfolio-${portfolio.id}`, portfolio, {
-            attempts: 3,
-            backoff: 5000,
-        });
-    }
-
-    async sync(portfolio: Portfolio) {
-        if (!portfolio) throw Error(`Prtfolio not provided`);
-
-        await this.updateStatusAndSendEvent(portfolio, `syncing`);
-
-        const supportedAssets = await this.assetService.getAll();
-
+    await Promise.all(
+      portfolios.map(async (portfolio) => {
         try {
-            await Promise.all([
-                this.syncAssets(portfolio, supportedAssets),
-                this.syncTransactions(portfolio, supportedAssets),
-            ]);
-
-            await this.updateStatusAndSendEvent(portfolio, `active`);
+          await this.enqueueSyncJob(portfolio);
         } catch (error) {
-            await this.updateStatusAndSendEvent(portfolio, `inactive`);
-            console.error("Error syncing portfolio:", error.message);
+          console.error(`Error processing portfolio ${portfolio.id}:`, error);
         }
-    }
-
-    async updateStatusAndSendEvent(
-        portfolio: Portfolio,
-        status: PortfolioStatus,
-    ) {
-        await this.portfolioService.updateStatusById(
-            portfolio.id,
-            portfolio.user_id,
-            status,
-        );
-
-        this.portfolioEventService.sendEvent(
-            {
-                portfolioId: `${portfolio.id}`,
-                userId: portfolio.user_id,
-                status,
-            },
-        );
-    }
-
-    private async syncAssets(
-        portfolio: Portfolio,
-        supportedAssets: Asset[],
-    ) {
-        const connection = this.connectionFactory.getConnection(
-            portfolio.connection_name,
-        );
-
-        const assets = await connection.getAssets(portfolio.meta);
-
-        const supportedSymbols = new Set(
-            supportedAssets.flatMap((
-                asset,
-            ) => [asset.symbol, ...(asset.alt_names || [])]),
-        );
-
-        const assetsToInsert = assets
-            .filter((v) => supportedSymbols.has(v.symbol))
-            .map((v) => ({
-                asset: v.symbol,
-                amount: v.balance,
-                portfolio_id: portfolio.id,
-            }));
-
-        if (assetsToInsert.length > 0) {
-            await this.portfolioAssetService.insert(
-                assetsToInsert,
-            );
-            console.log(
-                `Assets inserted successfully (${assetsToInsert.length} records)`,
-            );
-        } else {
-            console.log("No supported assets to insert");
-        }
-    }
-
-    private async syncTransactions(
-        portfolio: Portfolio,
-        supportedAssets: Asset[],
-    ) {
-        const connection = this.connectionFactory.getConnection(
-            portfolio.connection_name,
-        );
-
-        const transactions = (await connection.getTransactions(
-            portfolio.meta,
-        )).sort((a, b) =>
-            new Date(a.time).getTime() - new Date(b.time).getTime()
-        );
-
-        const supportedSymbols = new Set(
-            supportedAssets.flatMap((asset) => [
-                asset.symbol,
-                ...(asset.alt_names || []),
-            ]),
-        );
-
-        const transactionsToInsert = transactions
-            .filter((v) => {
-                return supportedSymbols.has(v.asset.toLowerCase());
-            })
-            .map((v) => ({
-                amount: v.amount,
-                asset: v.asset,
-                time: v.time,
-                type: v.type,
-                portfolio_id: portfolio.id,
-                hash: generateTransactionHash(v.id),
-            }));
-
-        // Insert transactions into the database
-        if (transactionsToInsert.length > 0) {
-            await this.transactionService.insert(transactionsToInsert);
-            console.log(
-                `Transactions inserted successfully (${transactionsToInsert.length} records)`,
-            );
-        } else {
-            console.log("No supported transactions to insert");
-        }
-    }
-
-    private async syncInitialPortfolios(syncThresholdMinutes: number = 60) {
-        // const portfolios = await this.portfolioService
-        //     .getUnsynced(syncThresholdMinutes);
-        const portfolios = await this.portfolioService
-            .getAll();
-
-        if (portfolios.length > 0) {
-            console.log(
-                `Syncing ${portfolios.length} portfolios...`,
-            );
-        } else {
-            console.log(`No portfolios to sync`);
-        }
-
-        await Promise.all(
-            portfolios.map(async (portfolio) => {
-                try {
-                    await this.enqueueSyncJob(portfolio);
-                } catch (error) {
-                    console.error(
-                        `Error processing portfolio ${portfolio.id}:`,
-                        error,
-                    );
-                }
-            }),
-        );
-    }
+      })
+    );
+  }
 }

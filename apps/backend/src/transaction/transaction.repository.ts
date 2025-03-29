@@ -17,7 +17,7 @@ export class TransactionRepository {
         title: result.portfolio_title,
         connection: {
           logo: result.connection_logo,
-          name: result.connection_name,
+          name: result.portfolio_connection_name,
           title: result.connection_title,
           type: result.connection_type,
         },

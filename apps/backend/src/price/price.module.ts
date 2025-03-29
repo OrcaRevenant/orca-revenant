@@ -9,6 +9,7 @@ import { PriceService } from "./price.service";
 import { AssetDetailsModule } from "@/asset-details/asset-details.module";
 import { BinanceModule } from "./providers/binance/binance.module";
 import { PriceProviderModule } from "./providers/price-provider.module";
+import { PriceConversionService } from "./price-conversion.service";
 
 @Module({
   imports: [
@@ -20,8 +21,7 @@ import { PriceProviderModule } from "./providers/price-provider.module";
     BinanceModule,
     PriceProviderModule,
   ],
-  providers: [PriceService, PriceRepository],
-  exports: [PriceService, PriceRepository],
+  providers: [PriceService, PriceRepository, PriceConversionService],
+  exports: [PriceService, PriceRepository, PriceConversionService],
 })
-export class PriceModule {
-}
+export class PriceModule {}

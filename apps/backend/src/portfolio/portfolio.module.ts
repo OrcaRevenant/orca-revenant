@@ -7,6 +7,7 @@ import { PortfolioEventService } from "./portfolio-event.service";
 import { TransactionModule } from "@/transaction/transaction.module";
 import { DatabaseModule } from "@/database/database.module";
 import { PortfolioAssetModule } from "./portfolio-asset/portfolio-asset.module";
+import { PriceModule } from "@/price/price.module";
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { PortfolioAssetModule } from "./portfolio-asset/portfolio-asset.module";
     TransactionModule,
     PortfolioAssetModule,
     forwardRef(() => PortfolioSyncModule),
+    PriceModule,
   ],
   providers: [PortfolioService, PortfolioRepository, PortfolioEventService],
   controllers: [PortfolioController],

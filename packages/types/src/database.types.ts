@@ -565,6 +565,7 @@ export interface Connection {
   enabled: Generated<boolean>;
   logo: string | null;
   name: string;
+  schema: Json;
   title: string;
   type: string;
 }

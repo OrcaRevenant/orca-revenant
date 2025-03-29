@@ -90,15 +90,35 @@ export async function seed(db: Kysely<any>): Promise<void> {
         type: "CEX",
         logo: "https://img.icons8.com/?size=100&id=dxoYK8bxqiJr&format=png&color=000000",
         description: "Mock is the best exchange in the orca.",
+        schema: {
+          type: "object",
+          properties: {
+            api_key: {
+              type: "string",
+              description: "The API key for the exchange.",
+            },
+          },
+          required: ["api_key"],
+        },
         enabled: true,
       },
       {
         name: "nobitex",
         title: "Nobitex",
         type: "CEX",
-        logo: "https://nobitex.ir/favicon.png",
+        logo: "https://upload.wikimedia.org/wikipedia/commons/c/ca/Nobitex-logo.png",
         description: "Nobitex is a digital currency exchange in Iran.",
         enabled: true,
+        schema: {
+          type: "object",
+          properties: {
+            api_key: {
+              type: "string",
+              description: "The API key for the exchange.",
+            },
+          },
+          required: ["api_key"],
+        },
       },
       {
         name: "coinex",
@@ -107,6 +127,20 @@ export async function seed(db: Kysely<any>): Promise<void> {
         logo: "https://www.coinex.com/assets/img/brand/svg/day-1.svg",
         description: "Coinex",
         enabled: true,
+        schema: {
+          type: "object",
+          properties: {
+            api_key: {
+              type: "string",
+              description: "The API key for the exchange.",
+            },
+            secret_key: {
+              type: "string",
+              description: "The API secret for the exchange.",
+            },
+          },
+          required: ["api_key", "secret_key"],
+        },
       },
     ])
     .execute();

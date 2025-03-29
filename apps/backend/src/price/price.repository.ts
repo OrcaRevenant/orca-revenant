@@ -1,124 +1,128 @@
-import { Injectable } from "@nestjs/common";
-import { sql } from "kysely";
+import { Inject, Injectable } from "@nestjs/common";
 import { Price } from "./price.types";
-import dayjs from "dayjs";
 import { DatabaseService } from "@/database/database.service";
 import { Readable } from "stream";
 import { from as copyFrom } from "pg-copy-streams";
+import { PoolClient } from "pg";
+import { ConfigType } from "@nestjs/config";
+import priceConfig from "./price.config";
+import { sql } from "kysely";
 
 @Injectable()
 export class PriceRepository {
-    constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    @Inject(priceConfig.KEY)
+    private readonly config: ConfigType<typeof priceConfig>
+  ) {}
 
-    async clean(): Promise<boolean> {
-        const result = await this.db.query
-            .deleteFrom("price")
-            .where("price", "!=", "-1")
-            .executeTakeFirst();
+  async clean(): Promise<boolean> {
+    const result = await this.db.query
+      .deleteFrom("price")
+      .where("price", "!=", "-1")
+      .executeTakeFirst();
 
-        return result?.numDeletedRows > 0;
+    return result?.numDeletedRows > 0;
+  }
+
+  async findLatestTimestamp(asset: string): Promise<Date | null> {
+    const result = await this.db.query
+      .selectFrom("price")
+      .select("time")
+      .where("asset", "=", asset)
+      .orderBy("time", "desc")
+      .limit(1)
+      .executeTakeFirst();
+
+    return result ? new Date(result.time) : null;
+  }
+
+  async insertInChunks(prices: Price[]): Promise<void> {
+    const chunkSize = 1000;
+    for (let i = 0; i < prices.length; i += chunkSize) {
+      const chunk = prices.slice(i, i + chunkSize);
+      await this.db.query.insertInto("price").values(chunk).execute();
     }
+  }
 
-    async findLatestTimestamp(asset: string): Promise<Date | null> {
-        const result = await this.db.query
-            .selectFrom("price")
-            .select("time")
-            .where("asset", "=", asset)
-            .orderBy("time", "desc")
-            .limit(1)
-            .executeTakeFirst();
+  async bulkInsertUsingCopy(prices: Price[]): Promise<void> {
+    const BATCH_SIZE = 10_000;
 
-        return result ? new Date(result.time) : null;
-    }
+    let client: PoolClient;
+    try {
+      client = await this.db.pool.connect();
 
-    async insertInChunks(
-        prices: Price[],
-    ): Promise<void> {
-        const chunkSize = 1000;
-        for (let i = 0; i < prices.length; i += chunkSize) {
-            const chunk = prices.slice(i, i + chunkSize);
-            await this.db.query
-                .insertInto("price")
-                .values(chunk)
-                .execute();
-        }
-    }
+      for (let i = 0; i < prices.length; i += BATCH_SIZE) {
+        const batch = prices.slice(i, i + BATCH_SIZE);
 
-    async bulkInsertUsingCopy(
-        prices: Price[],
-    ): Promise<void> {
-        const BATCH_SIZE = 10_000;
+        const stream = Readable.from(
+          batch
+            .map((price) => `${price.asset},${price.price},${price.time}`)
+            .join("\n")
+        );
 
-        try {
-            const client = await this.db.pool.connect();
-
-            for (let i = 0; i < prices.length; i += BATCH_SIZE) {
-                const batch = prices.slice(i, i + BATCH_SIZE);
-
-                const stream = Readable.from(
-                    batch
-                        .map((price) =>
-                            `${price.asset},${price.price},${price.time}`
-                        )
-                        .join("\n"),
-                );
-
-                const copyQuery = `
+        const copyQuery = `
                     COPY price (asset, price, time)
                     FROM STDIN
                     WITH (FORMAT csv)
                 `;
 
-                const copyStream = client.query(copyFrom(copyQuery));
+        const copyStream = client.query(copyFrom(copyQuery));
 
-                stream.pipe(copyStream);
+        stream.pipe(copyStream);
 
-                await new Promise((resolve, reject) => {
-                    copyStream.on("finish", resolve);
-                    copyStream.on("error", reject);
-                });
-            }
-        } catch (error) {
-            console.error("Error during bulk insert:", error);
-            throw error;
-        }
+        await new Promise((resolve, reject) => {
+          copyStream.on("finish", resolve);
+          copyStream.on("error", reject);
+        });
+      }
+    } catch (error) {
+      console.error("Error during bulk insert:", error);
+      throw error;
+    } finally {
+      if (client) {
+        client.release();
+      }
+    }
+  }
+
+  async insert(price: Partial<Price>): Promise<void> {
+    const result = await this.db.query
+      .insertInto("price")
+      .values(price)
+      .execute();
+    if (!result) {
+      throw new Error("Failed to insert price");
+    }
+  }
+
+  /**
+   * Gets the conversion rate from the default quote (USDT) to the target quote at a specific timestamp
+   * @param targetQuote - The target quote asset
+   * @param timestamp - The timestamp to get the rate for
+   * @returns The conversion rate
+   */
+  async getConversionRate(
+    targetQuote: string,
+    timestamp?: Date
+  ): Promise<number> {
+    const standardizedTargetQuote = targetQuote.toLowerCase();
+
+    if (standardizedTargetQuote === this.config.defaultQuote.toLowerCase()) {
+      return 1;
     }
 
-    async insert(price: Partial<Price>): Promise<void> {
-        const result = await this.db.query.insertInto("price").values(
-            price,
-        )
-            .execute();
-        if (!result) {
-            throw new Error("Failed to insert price");
-        }
-    }
+    const effectiveTimestamp = timestamp || new Date();
 
-    async findClosestWithinThreshold(
-        asset: string,
-        time: string,
-    ): Promise<number | null> {
-        const timestamp = dayjs(time).toISOString();
+    const result = await this.db.query
+      .selectFrom("price")
+      .where("asset", "=", standardizedTargetQuote)
+      .where("time", "<=", effectiveTimestamp)
+      .orderBy("time", "desc")
+      .limit(1)
+      .select("price")
+      .executeTakeFirst();
 
-        const result = await this.db.query
-            .selectFrom("price")
-            .select(["price", "time"])
-            .where("asset", "=", asset)
-            .orderBy(
-                sql`ABS(EXTRACT(EPOCH FROM time - TIMESTAMP ${
-                    sql.lit(timestamp)
-                }))`,
-                "asc",
-            )
-            .limit(1)
-            .executeTakeFirst();
-
-        if (!result) return null;
-
-        const timeDiffInSeconds = Math.abs(
-            dayjs(timestamp).diff(dayjs(result.time), "seconds"),
-        );
-
-        return timeDiffInSeconds <= 120 ? +result.price : null;
-    }
+    return Number(result.price);
+  }
 }

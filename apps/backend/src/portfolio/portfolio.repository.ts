@@ -270,7 +270,6 @@ export class PortfolioRepository {
   ): Promise<number> {
     const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
 
-    // Verify ownership of all portfolios
     await this.isOwner(ids, userId);
 
     const result = await sql`
@@ -288,7 +287,7 @@ export class PortfolioRepository {
                 ORDER BY time DESC
                 LIMIT 1
             ) p
-            WHERE pa.portfolio_id = ANY(${ids.map((id) => `${id}`)})
+            WHERE pa.portfolio_id = ANY(${ids})
         )
         SELECT 
             COALESCE(SUM(amount * price), 0)::text as total_value,
@@ -296,7 +295,6 @@ export class PortfolioRepository {
         FROM portfolio_balances;
     `.execute(this.db.query);
 
-    // Add type safety for the result
     type BalanceResult = { total_value: string; found_portfolios: number };
     const firstRow = result.rows[0] as BalanceResult | undefined;
     return Number(firstRow?.total_value || 0);

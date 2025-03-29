@@ -46,7 +46,7 @@ export class PortfolioAssetRepository {
     userId: string,
     pageOptionsDto: PageOptionsDto,
     calculationFrom: string,
-  ): Promise<PageDto<PortfolioAsset>> {
+  ): Promise<PageDto<PopulatedPortfolioAsset>> {
     const { limit, skip } = pageOptionsDto;
     const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
 
@@ -87,20 +87,24 @@ export class PortfolioAssetRepository {
           a.symbol,
           a.name,
           a.logo,
-          (
-            SELECT price
-            FROM price
-            WHERE asset = aa.asset
-            ORDER BY time DESC
-            LIMIT 1
+          COALESCE(
+            (
+              SELECT price
+              FROM price
+              WHERE asset = aa.asset
+              ORDER BY time DESC
+              LIMIT 1
+            ), 0
           ) AS price_per_unit,
-          (
-            SELECT price
-            FROM price
-            WHERE asset = aa.asset
-              AND time <= ${calculationFrom}::timestamptz
-            ORDER BY time DESC
-            LIMIT 1
+          COALESCE(
+            (
+              SELECT price
+              FROM price
+              WHERE asset = aa.asset
+                AND time <= ${calculationFrom}::timestamptz
+              ORDER BY time DESC
+              LIMIT 1
+            ), 0
           ) AS price_at_calculation
         FROM aggregated_assets aa
         INNER JOIN asset a 
@@ -113,15 +117,18 @@ export class PortfolioAssetRepository {
         ad.name,
         ad.logo,
         ad.price_per_unit::text,
-        -- Current total value = current price * amount
         (ad.amount * ad.price_per_unit)::text AS value,
         -- Price change: current price - price at the calculation time
-        (ad.price_per_unit - ad.price_at_calculation)::text AS change,
+        CASE 
+          WHEN ad.price_per_unit > 0 OR ad.price_at_calculation > 0
+          THEN (ad.price_per_unit - ad.price_at_calculation)::text
+          ELSE '0'
+        END AS change,
         -- Price change percentage: (current price - price at calculation) / price at calculation * 100
         CASE 
-          WHEN ad.price_at_calculation IS NOT NULL AND ad.price_at_calculation != 0 
+          WHEN ad.price_at_calculation > 0 
           THEN (((ad.price_per_unit - ad.price_at_calculation) / ad.price_at_calculation) * 100)::text
-          ELSE NULL
+          ELSE '0'
         END AS change_percentage,
         COUNT(*) OVER() AS total_count
       FROM asset_details ad
@@ -138,7 +145,7 @@ export class PortfolioAssetRepository {
       pageOptionsDto,
     });
 
-    return new PageDto<PortfolioAsset>(
+    return new PageDto<PopulatedPortfolioAsset>(
       results.rows.map((v) =>
         this.serialize({
           ...v,

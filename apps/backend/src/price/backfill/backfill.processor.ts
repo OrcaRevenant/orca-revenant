@@ -7,7 +7,7 @@ import { PriceService } from "../price.service";
 
 dayjs.extend(duration);
 
-@Processor("backfill", { concurrency: 5, lockDuration: 30000 })
+@Processor("backfill", { concurrency: 5, lockDuration: 1_500_000 })
 export class BackfillProcessor extends WorkerHost {
   constructor(private readonly priceService: PriceService) {
     super();

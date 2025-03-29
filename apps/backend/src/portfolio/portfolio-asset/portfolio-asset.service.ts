@@ -5,36 +5,30 @@ import { PageOptionsDto } from "@/pagination/dto";
 
 @Injectable()
 export class PortfolioAssetService {
-    constructor(
-        private readonly portfolioAssetRepository: PortfolioAssetRepository,
-    ) {}
+  constructor(
+    private readonly portfolioAssetRepository: PortfolioAssetRepository
+  ) {}
 
-    async insert(assets: PortfolioAsset[]) {
-        return this.portfolioAssetRepository.insert(assets);
-    }
+  async insert(assets: PortfolioAsset[]) {
+    return this.portfolioAssetRepository.insert(assets);
+  }
 
-    async getByPortfolioIdPaginated(
-        id: string | string[],
-        userId: string,
-        pageOptionsDto: PageOptionsDto,
-    ) {
-        const calculationFrom = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  async getByPortfolioIdPaginated(
+    id: string | string[],
+    userId: string,
+    pageOptionsDto: PageOptionsDto
+  ) {
+    const calculationFrom = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-        return this.portfolioAssetRepository.findByPortfolioIdPaginated(
-            id,
-            userId,
-            pageOptionsDto,
-            calculationFrom.toISOString(),
-        );
-    }
+    return this.portfolioAssetRepository.findByPortfolioIdPaginated(
+      id,
+      userId,
+      pageOptionsDto,
+      calculationFrom.toISOString()
+    );
+  }
 
-    async getAllocation(
-        id: string | string[],
-        userId: string,
-    ) {
-        return this.portfolioAssetRepository.findAssetAllocation(
-            id,
-            userId,
-        );
-    }
+  async getAllocation(id: string | string[], userId: string) {
+    return this.portfolioAssetRepository.findAssetAllocation(id, userId);
+  }
 }

@@ -15,13 +15,15 @@ export class AggregationController {
     @Req() req: AuthUserRequest,
     @Param("id") id: string,
     @Query() pageOptionsDto: PageOptionsDto,
-    @Query("type") type: PortfolioType
+    @Query("type") type: PortfolioType,
+    @Query("quote") quote: string = "usdt"
   ) {
     return this.aggregationService.getAssets(
       id,
       req.user.sub,
       pageOptionsDto,
-      type
+      type,
+      quote
     );
   }
 
@@ -29,27 +31,35 @@ export class AggregationController {
   async getBalance(
     @Req() req: AuthUserRequest,
     @Param("id") id: string,
-    @Query("type") type: PortfolioType
+    @Query("type") type: PortfolioType,
+    @Query("quote") quote: string = "usdt"
   ) {
-    return this.aggregationService.getBalance(id, req.user.sub, type);
+    return this.aggregationService.getBalance(id, req.user.sub, type, quote);
   }
 
   @Get(":id/assets/allocation")
   async getAssetAllocation(
     @Req() req: AuthUserRequest,
     @Param("id") id: string,
-    @Query("type") type: PortfolioType
+    @Query("type") type: PortfolioType,
+    @Query("quote") quote: string = "usdt"
   ) {
-    return this.aggregationService.getAssetAllocation(id, req.user.sub, type);
+    return this.aggregationService.getAssetAllocation(
+      id,
+      req.user.sub,
+      type,
+      quote
+    );
   }
 
   @Get(":id/allocation")
   async getAllocation(
     @Req() req: AuthUserRequest,
     @Param("id") id: string,
-    @Query("type") type: PortfolioType
+    @Query("type") type: PortfolioType,
+    @Query("quote") quote: string = "usdt"
   ) {
-    return this.aggregationService.getAllocation(id, req.user.sub, type);
+    return this.aggregationService.getAllocation(id, req.user.sub, type, quote);
   }
 
   @Get(":id/transactions")
@@ -57,13 +67,15 @@ export class AggregationController {
     @Req() req: AuthUserRequest,
     @Param("id") id: string,
     @Query() pageOptionsDto: PageOptionsDto,
-    @Query("type") type: PortfolioType
+    @Query("type") type: PortfolioType,
+    @Query("quote") quote: string = "usdt"
   ) {
     return this.aggregationService.getTransactions(
       id,
       req.user.sub,
       pageOptionsDto,
-      type
+      type,
+      quote
     );
   }
 
@@ -72,13 +84,15 @@ export class AggregationController {
     @Req() req: AuthUserRequest,
     @Param("id") id: string,
     @Query("timeframe") timeframe: Timeframe,
-    @Query("type") type: PortfolioType
+    @Query("type") type: PortfolioType,
+    @Query("quote") quote: string = "usdt"
   ) {
     return this.aggregationService.getHistoricalBalance(
       id,
       req.user.sub,
       timeframe,
-      type
+      type,
+      quote
     );
   }
 
@@ -88,14 +102,16 @@ export class AggregationController {
     @Req() req: AuthUserRequest,
     @Param("id") id: string,
     @Query("timeframe") timeframe: Timeframe,
-    @Query("type") type: PortfolioType
+    @Query("type") type: PortfolioType,
+    @Query("quote") quote: string = "usdt"
   ) {
     const userId = req.user.sub;
     return this.aggregationService.getAssetPerformance(
       id,
       userId,
       timeframe,
-      type
+      type,
+      quote
     );
   }
 }

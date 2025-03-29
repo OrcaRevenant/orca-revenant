@@ -14,47 +14,66 @@ export class AggregationService {
   async getBalance(
     id: string,
     userId: string,
-    type: PortfolioType
+    type: PortfolioType,
+    quote: string = "usdt"
   ): Promise<{ balance: number }> {
     const portfolioIds = await this.getPortfolioIds(id, userId, type);
-    return this.portfolioService.getBalance(portfolioIds, userId);
+    return this.portfolioService.getBalance(portfolioIds, userId, quote);
   }
 
   async getAssets(
     id: string,
     userId: string,
     pageOptionsDto: PageOptionsDto,
-    type: PortfolioType
+    type: PortfolioType,
+    quote: string = "usdt"
   ) {
     const portfolioIds = await this.getPortfolioIds(id, userId, type);
     return this.portfolioService.getAssets(
       portfolioIds,
       userId,
-      pageOptionsDto
+      pageOptionsDto,
+      quote
     );
   }
 
-  async getAssetAllocation(id: string, userId: string, type: PortfolioType) {
+  async getAssetAllocation(
+    id: string,
+    userId: string,
+    type: PortfolioType,
+    quote: string = "usdt"
+  ) {
     const portfolioIds = await this.getPortfolioIds(id, userId, type);
-    return this.portfolioService.getAssetAllocation(portfolioIds, userId);
+    return this.portfolioService.getAssetAllocation(
+      portfolioIds,
+      userId,
+      quote
+    );
   }
 
-  async getAllocation(id: string, userId: string, type: PortfolioType) {
+  async getAllocation(
+    id: string,
+    userId: string,
+    type: PortfolioType,
+    quote: string = "usdt"
+  ) {
     const portfolioIds = await this.getPortfolioIds(id, userId, type);
-    return this.portfolioService.getAllocation(portfolioIds, userId);
+    return this.portfolioService.getAllocation(portfolioIds, userId, quote);
   }
 
   async getTransactions(
     id: string,
     userId: string,
     pageOptionsDto: PageOptionsDto,
-    type: PortfolioType
+    type: PortfolioType,
+    quote: string = "usdt"
   ) {
     const portfolioIds = await this.getPortfolioIds(id, userId, type);
     return this.portfolioService.getTransactions(
       portfolioIds,
       userId,
-      pageOptionsDto
+      pageOptionsDto,
+      quote
     );
   }
 
@@ -62,13 +81,15 @@ export class AggregationService {
     id: string,
     userId: string,
     timeframe: Timeframe,
-    type: PortfolioType
+    type: PortfolioType,
+    quote: string = "usdt"
   ) {
     const portfolioIds = await this.getPortfolioIds(id, userId, type);
     return this.portfolioService.getHistoricalBalanceStrict(
       portfolioIds,
       userId,
-      timeframe
+      timeframe,
+      quote
     );
   }
 
@@ -76,13 +97,15 @@ export class AggregationService {
     id: string,
     userId: string,
     timeframe: Timeframe,
-    type: PortfolioType
+    type: PortfolioType,
+    quote: string = "usdt"
   ) {
     const portfolioIds = await this.getPortfolioIds(id, userId, type);
     return this.portfolioService.getAssetPerformanceStrict(
       portfolioIds,
       userId,
-      timeframe
+      timeframe,
+      quote
     );
   }
 

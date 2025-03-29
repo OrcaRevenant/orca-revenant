@@ -6,7 +6,7 @@ import { Queue } from "bullmq";
 @Injectable()
 export class BackfillStatusService {
   private isBackfillComplete = false;
-  private readonly checkInterval = 1000;
+  private readonly checkInterval = 5000;
   private readonly maxWaitTime = 3000000;
 
   constructor(

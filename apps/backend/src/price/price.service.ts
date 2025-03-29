@@ -47,7 +47,7 @@ export class PriceService extends PriceAbstract implements OnModuleInit {
       await this.backfillService.queue.obliterate({ force: true });
 
       console.log(`Queue drained successfully!`);
-      // await this.performBackfill();
+      // this.performBackfill();
     } catch (error) {
       console.error("Error during onModuleInit:", error.message);
       console.error("Error stack:", error.stack);
@@ -66,7 +66,7 @@ export class PriceService extends PriceAbstract implements OnModuleInit {
   //   job.start();
   // }
 
-  async performBackfill() {
+  private async performBackfill() {
     const currentDate = dayjs();
 
     const symbols = await this.getAssetSymbols();

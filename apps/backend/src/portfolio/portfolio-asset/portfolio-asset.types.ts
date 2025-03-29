@@ -1,14 +1,14 @@
 export type PortfolioAsset = {
-    amount: number;
-    asset: string;
-    portfolio_id: string;
+  amount: number;
+  asset: string;
+  portfolio_id: string;
 };
 
 export type PopulatedPortfolioAsset = PortfolioAsset & {
-    value: number;
-    price_per_unit: number;
-    pnl: number;
-    pnl_percentage: number;
-    change: number;
-    change_percentage: number;
+  value: number;
+  price_per_unit: number;
+  pnl: number;
+  pnl_percentage: number;
+  change: number;
+  change_percentage: number;
 };
