@@ -78,7 +78,7 @@ export class PriceConversionService {
 
   /**
    * Converts historical price data from the default quote to a target quote
-   * @param priceHistory - Array of historical price data with format { time: Date, price: number }
+   * @param priceHistory - Array of historical price data with format { time: Date; price: number }
    * @param targetQuote - The target quote asset to convert to
    * @returns The converted price history
    */
@@ -87,64 +87,19 @@ export class PriceConversionService {
     targetQuote: string
   ): Promise<{ time: Date; price: number }[]> {
     if (targetQuote.toLowerCase() === this.config.defaultQuote) {
-      return priceHistory; // No conversion needed
+      return priceHistory;
     }
 
-    // Group by time to reduce DB queries
-    const timeGroups = this.groupByTime(priceHistory);
-    const timeKeys = Object.keys(timeGroups);
-
-    // For each unique timestamp, get the conversion rate
-    const conversionRates = await Promise.all(
-      timeKeys.map(async (timeStr) => {
-        const time = new Date(timeStr);
-        const rate = await this.priceRepository.getConversionRate(
-          targetQuote,
-          time
-        );
-        return { time: timeStr, rate };
-      })
+    const timestamps = priceHistory.map((p) => p.time);
+    const conversionRates = await this.priceRepository.getConversionRates(
+      targetQuote,
+      timestamps
     );
 
-    // Create a map for quick lookups
-    const rateMap = conversionRates.reduce(
-      (acc, item) => {
-        acc[item.time] = item.rate;
-        return acc;
-      },
-      {} as Record<string, number>
-    );
-
-    // Convert all prices
-    return priceHistory.map((item) => {
-      const timeStr = item.time.toISOString();
-      const rate = rateMap[timeStr] || 1;
-      return {
-        time: item.time,
-        price: item.price / rate,
-      };
-    });
-  }
-
-  /**
-   * Groups price history entries by their timestamp
-   * @param priceHistory - Array of price history data
-   * @returns An object with timestamps as keys and arrays of prices as values
-   */
-  private groupByTime(
-    priceHistory: { time: Date; price: number }[]
-  ): Record<string, { time: Date; price: number }[]> {
-    return priceHistory.reduce(
-      (acc, item) => {
-        const timeStr = item.time.toISOString();
-        if (!acc[timeStr]) {
-          acc[timeStr] = [];
-        }
-        acc[timeStr].push(item);
-        return acc;
-      },
-      {} as Record<string, { time: Date; price: number }[]>
-    );
+    return priceHistory.map((item) => ({
+      time: item.time,
+      price: item.price / (conversionRates.get(item.time.toISOString()) || 1),
+    }));
   }
 
   /**

@@ -125,4 +125,47 @@ export class PriceRepository {
 
     return Number(result.price);
   }
+
+  /**
+   * Gets conversion rates for multiple timestamps
+   * @param targetQuote - The target quote asset
+   * @param timestamps - Array of timestamps to get rates for
+   * @returns Map of timestamp to conversion rate
+   */
+  async getConversionRates(
+    targetQuote: string,
+    timestamps: Date[]
+  ): Promise<Map<string, number>> {
+    const standardizedTargetQuote = targetQuote.toLowerCase();
+
+    if (standardizedTargetQuote === this.config.defaultQuote.toLowerCase()) {
+      return new Map(timestamps.map((t) => [t.toISOString(), 1]));
+    }
+
+    const result = await sql`
+      WITH time_series AS (
+        SELECT unnest(ARRAY[${sql.join(timestamps.map((t) => sql`${t}`))}]::timestamptz[]) as time
+      )
+      SELECT 
+        ts.time as requested_time,
+        COALESCE(p.price, 1) as price
+      FROM time_series ts
+      LEFT JOIN LATERAL (
+        SELECT price
+        FROM price
+        WHERE asset = ${standardizedTargetQuote}
+        AND time <= ts.time
+        ORDER BY time DESC
+        LIMIT 1
+      ) p ON true
+      ORDER BY ts.time;
+    `.execute(this.db.query);
+
+    return new Map(
+      result.rows.map((r: any) => [
+        new Date(r.requested_time).toISOString(),
+        Number(r.price),
+      ])
+    );
+  }
 }

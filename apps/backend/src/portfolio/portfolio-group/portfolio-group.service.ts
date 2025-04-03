@@ -7,19 +7,21 @@ import {
 } from "./portfolio-group.types";
 import { PortfolioRepository } from "../portfolio.repository";
 import { PopulatedPortfolio, Portfolio } from "../portfolio.types";
+import { PriceConversionService } from "@/price/price-conversion.service";
 
 @Injectable()
 export class PortfolioGroupService {
   constructor(
     private readonly portfolioGroupRepository: PortfolioGroupRepository,
-    private readonly portfolioRepository: PortfolioRepository
+    private readonly portfolioRepository: PortfolioRepository,
+    private readonly priceConversionService: PriceConversionService
   ) {}
 
   async getById(groupId: PortfolioGroupUniqueIdentifier, userId: string) {
     return this.portfolioGroupRepository.findByIdAndUser(groupId, userId);
   }
 
-  async getAllPopulated(userId: string) {
+  async getAllPopulated(userId: string, quote: string = "usdt") {
     const groups = await this.portfolioGroupRepository.findByUser(userId);
     const portfolios = await this.portfolioRepository.findByUser(userId);
 
@@ -28,7 +30,17 @@ export class PortfolioGroupService {
         portfolios as Portfolio[]
       );
 
-    const tree = this.buildPortfolioTree(groups, populatedPortfolios, null);
+    const conversionRate =
+      await this.priceConversionService.getConversionRate(quote);
+
+    const tree = this.buildPortfolioTree(
+      groups,
+      populatedPortfolios,
+      conversionRate,
+      null
+    );
+
+    // We don't need to convert the stats because we convert the total value in the tree
     const stats = this.calculateGroupStats(tree);
 
     return {
@@ -41,12 +53,15 @@ export class PortfolioGroupService {
     };
   }
 
-  private calculateGroupStats(items: PortfolioGroupTree = []): {
+  private calculateGroupStats(
+    items: PortfolioGroupTree = [],
+    conversionRate: number = 1
+  ): {
     totalValue: number;
     uniqueAssets: Set<string>;
     totalPortfolios: number;
   } {
-    return items.reduce(
+    const stats = items.reduce(
       (acc, item) => {
         if (item.type === "portfolio") {
           item.assets?.forEach((asset) => acc.uniqueAssets.add(asset));
@@ -56,7 +71,10 @@ export class PortfolioGroupService {
             totalPortfolios: acc.totalPortfolios + 1,
           };
         } else if (item.type === "group") {
-          const childStats = this.calculateGroupStats(item.children);
+          const childStats = this.calculateGroupStats(
+            item.children,
+            conversionRate
+          );
           childStats.uniqueAssets.forEach((asset) =>
             acc.uniqueAssets.add(asset)
           );
@@ -74,11 +92,18 @@ export class PortfolioGroupService {
         totalPortfolios: 0,
       }
     );
+
+    return {
+      totalValue: stats.totalValue / conversionRate,
+      uniqueAssets: stats.uniqueAssets,
+      totalPortfolios: stats.totalPortfolios,
+    };
   }
 
   private buildPortfolioTree(
     groups: PortfolioGroup[],
     portfolios: PopulatedPortfolio[],
+    conversionRate: number,
     parentId: PortfolioGroupUniqueIdentifier | null
   ): PortfolioGroupTree {
     const items: PortfolioGroupTree = [];
@@ -88,15 +113,16 @@ export class PortfolioGroupService {
       const children = this.buildPortfolioTree(
         groups,
         portfolios,
+        conversionRate,
         group.id as unknown as string
       );
 
-      const stats = this.calculateGroupStats(children || []);
+      const stats = this.calculateGroupStats(children || [], conversionRate);
 
       items.push({
         ...group,
         children,
-        total_value: stats.totalValue,
+        total_value: stats.totalValue / conversionRate,
         unique_assets: stats.uniqueAssets,
         total_portfolios: stats.totalPortfolios,
         type: "group",
@@ -108,7 +134,11 @@ export class PortfolioGroupService {
     );
 
     for (const portfolio of currentLevelPortfolios) {
-      items.push({ ...portfolio, type: "portfolio" });
+      items.push({
+        ...portfolio,
+        value: portfolio.value / conversionRate,
+        type: "portfolio",
+      });
     }
 
     return items;

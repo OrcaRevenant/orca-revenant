@@ -2,6 +2,7 @@ import {
   ClassSerializerInterceptor,
   Controller,
   Get,
+  Query,
   Req,
   UseGuards,
   UseInterceptors,
@@ -19,9 +20,15 @@ export class PortoflioGroupController {
 
   @Get()
   @UseGuards(JwtGuard)
-  async getAll(@Req() req: AuthUserRequest) {
+  async getAll(
+    @Req() req: AuthUserRequest,
+    @Query("quote") quote: string = "usdt"
+  ) {
     const userId = req.user.sub;
-    const groups = await this.portfolioGroupService.getAllPopulated(userId);
+    const groups = await this.portfolioGroupService.getAllPopulated(
+      userId,
+      quote
+    );
 
     return plainToInstance(PortfolioGroupTreeResponseDto, groups, {
       excludeExtraneousValues: true,

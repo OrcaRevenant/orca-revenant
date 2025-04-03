@@ -62,11 +62,14 @@ export class PortfolioService {
       quote
     );
 
-    return result.list.map((asset, index) => ({
-      ...asset,
-      value: convertedPrices[index * 2].price,
-      price_per_unit: convertedPrices[index * 2 + 1].price,
-    }));
+    return {
+      ...result,
+      list: result.list.map((asset, index) => ({
+        ...asset,
+        value: convertedPrices[index * 2].price,
+        price_per_unit: convertedPrices[index * 2 + 1].price,
+      })),
+    };
   }
 
   async getAssetAllocation(
@@ -194,27 +197,34 @@ export class PortfolioService {
       resolution
     );
 
-    const latestTimestamp = new Date(
-      (balanceHistory[balanceHistory.length - 1] as any).time || new Date()
-    );
-    const conversionRate = await this.priceConversionService.getConversionRate(
-      quote,
-      latestTimestamp
-    );
+    // Convert the total values using convertPriceHistory
+    const totalValueHistory =
+      await this.priceConversionService.convertPriceHistory(
+        balanceHistory.map((record: any) => ({
+          time: new Date(record.time),
+          price: Number(record.total_value),
+        })),
+        quote
+      );
 
-    const convertedHistory = balanceHistory.map((record: any) => {
+    // Map the converted total values back to the records
+    const convertedHistory = balanceHistory.map((record: any, index) => {
       const convertedBalances = record.balances.map((balance: any) => ({
         ...balance,
-        value: (Number(balance.value) / conversionRate).toString(),
+        value: (
+          totalValueHistory[index].price *
+          (Number(balance.value) / Number(record.total_value))
+        ).toString(),
         price_per_unit: (
-          Number(balance.price_per_unit) / conversionRate
+          totalValueHistory[index].price *
+          (Number(balance.price_per_unit) / Number(record.total_value))
         ).toString(),
       }));
 
       return {
         time: record.time,
         balances: convertedBalances,
-        total_value: (Number(record.total_value) / conversionRate).toString(),
+        total_value: totalValueHistory[index].price.toString(),
       };
     });
 
@@ -260,22 +270,6 @@ export class PortfolioService {
       pnl: performance.pnl / conversionRate,
       amount: performance.amount,
     };
-  }
-
-  async getAssetPriceHistoryChart(
-    userId: string,
-    asset: string,
-    startDate: Date,
-    endDate: Date,
-    resolution: "hourly" | "daily"
-  ) {
-    return this.portfolioRepository.findAssetPriceHistory(
-      userId,
-      asset,
-      startDate,
-      endDate,
-      resolution
-    );
   }
 
   async sync(id: string, userId: string) {

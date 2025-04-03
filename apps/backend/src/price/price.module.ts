@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AssetModule } from "@/asset/asset.module";
 import { DatabaseModule } from "@/database/database.module";
@@ -15,11 +15,11 @@ import { PriceConversionService } from "./price-conversion.service";
   imports: [
     ConfigModule.forFeature(priceConfig),
     DatabaseModule,
-    AssetModule,
     AssetDetailsModule,
     BackfillModule,
     BinanceModule,
     PriceProviderModule,
+    forwardRef(() => AssetModule),
   ],
   providers: [PriceService, PriceRepository, PriceConversionService],
   exports: [PriceService, PriceRepository, PriceConversionService],

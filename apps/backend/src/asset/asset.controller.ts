@@ -11,8 +11,9 @@ export class AssetController {
   @UseGuards(JwtGuard)
   async getHistory(
     @Param("symbol") symbol: string,
-    @Query("timeframe") timeframe: Timeframe
+    @Query("timeframe") timeframe: Timeframe,
+    @Query("quote") quote: string
   ) {
-    return this.assetService.getAssetHistoryStrict(symbol, timeframe);
+    return this.assetService.getAssetHistoryStrict(symbol, timeframe, quote);
   }
 }
