@@ -104,6 +104,25 @@ export async function up(db: Kysely<any>): Promise<void> {
     )
     .addPrimaryKeyConstraint(`portfolio_assets_pkey`, ["portfolio_id", "asset"])
     .execute();
+
+  await db.schema
+    .createTable("public.portfolio_items_order")
+    .addColumn("id", "bigserial", (col) => col.notNull().primaryKey())
+    .addColumn("user_id", "uuid", (col) =>
+      col
+        .notNull()
+        .references("auth.users.id")
+        .onDelete("cascade")
+        .defaultTo(sql`auth.uid()`)
+    )
+    .addColumn("item_type", "text", (col) =>
+      col.notNull().check(sql`item_type IN ('portfolio', 'portfolio_group')`)
+    )
+    .addColumn("item_id", "bigint", (col) => col.notNull())
+    .addColumn("order", "integer", (col) => col.notNull())
+    .addUniqueConstraint("unique_order_per_user", ["user_id", "order"])
+    .addUniqueConstraint("unique_item_reference", ["item_type", "item_id"])
+    .execute();
 }
 
 export async function down(db: Kysely<any>): Promise<void> {

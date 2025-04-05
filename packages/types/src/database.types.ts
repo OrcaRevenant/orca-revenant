@@ -751,6 +751,14 @@ export interface PortfolioGroup {
   user_id: Generated<string>;
 }
 
+export interface PortfolioItemsOrder {
+  id: Generated<Int8>;
+  item_id: Int8;
+  item_type: string;
+  order: number;
+  user_id: Generated<string>;
+}
+
 export interface Price {
   asset: string;
   price: Numeric;
@@ -1107,6 +1115,7 @@ export interface DB {
   portfolio: Portfolio;
   portfolio_assets: PortfolioAssets;
   portfolio_group: PortfolioGroup;
+  portfolio_items_order: PortfolioItemsOrder;
   price: Price;
   "realtime.messages": RealtimeMessages;
   "realtime.schema_migrations": RealtimeSchemaMigrations;

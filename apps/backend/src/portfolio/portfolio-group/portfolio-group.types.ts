@@ -1,4 +1,4 @@
-import { PopulatedPortfolio } from "../portfolio.types";
+import { PopulatedPortfolio, PortfolioType } from "../portfolio.types";
 
 export type PortfolioGroupUniqueIdentifier = (string & {}) | "root";
 
@@ -18,7 +18,7 @@ export interface PortfolioGroupStats {
 }
 
 export interface PortfolioGroupTreeItem {
-  type: "portfolio" | "group";
+  type: PortfolioType;
 }
 
 export interface PortfolioTreeItem
