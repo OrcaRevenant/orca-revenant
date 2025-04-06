@@ -7,13 +7,22 @@ import { sql } from "kysely";
 export class AssetRepository {
   constructor(private readonly db: DatabaseService) {}
 
+  private serialize(asset: any): Asset {
+    return {
+      alt_names: asset.alt_names,
+      logo: asset.logo,
+      name: asset.name,
+      symbol: asset.symbol.toLowerCase(),
+    };
+  }
+
   async findAll(): Promise<Asset[]> {
     const assets = await this.db.query
       .selectFrom("asset")
       .selectAll()
       .execute();
 
-    return assets;
+    return assets.map(this.serialize);
   }
 
   async findAssetPriceHistory(

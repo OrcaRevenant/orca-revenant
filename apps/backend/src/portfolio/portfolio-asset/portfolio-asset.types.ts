@@ -11,4 +11,5 @@ export type PopulatedPortfolioAsset = PortfolioAsset & {
   pnl_percentage: number;
   change: number;
   change_percentage: number;
+  price_at_calculation: number;
 };

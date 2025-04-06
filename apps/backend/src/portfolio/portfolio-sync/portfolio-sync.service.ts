@@ -42,8 +42,6 @@ export class PortfolioSyncService {
 
     await this.updateStatusAndSendEvent(portfolio, `syncing`);
 
-    // await new Promise((resolve) => setTimeout(resolve, 3000));
-
     const supportedAssets = await this.assetService.getAll();
 
     try {
@@ -152,9 +150,9 @@ export class PortfolioSyncService {
   }
 
   private async syncInitialPortfolios(syncThresholdMinutes: number = 60) {
-    // const portfolios = await this.portfolioService
-    //     .getUnsynced(syncThresholdMinutes);
-    const portfolios = await this.portfolioService.getAll();
+    const portfolios =
+      await this.portfolioService.getUnsynced(syncThresholdMinutes);
+    // const portfolios = await this.portfolioService.getAll();
 
     if (portfolios.length > 0) {
       console.log(`Syncing ${portfolios.length} portfolios...`);

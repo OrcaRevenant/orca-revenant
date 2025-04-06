@@ -20,14 +20,13 @@ export class PortfolioAssetRepository {
       price_per_unit: result.price_per_unit,
       pnl: result.pnl || 0,
       pnl_percentage: result.pnl_percentage || 0,
+      price_at_calculation: result.price_at_calculation,
       change: result.change,
       change_percentage: result.change_percentage,
     };
   }
 
-  async insert(
-    assets: PortfolioAsset[],
-  ): Promise<boolean> {
+  async insert(assets: PortfolioAsset[]): Promise<boolean> {
     await this.db.query
       .insertInto("portfolio_assets")
       .values(assets)
@@ -45,7 +44,7 @@ export class PortfolioAssetRepository {
     portfolioIds: string | string[],
     userId: string,
     pageOptionsDto: PageOptionsDto,
-    calculationFrom: string,
+    calculationFrom: string
   ): Promise<PageDto<PopulatedPortfolioAsset>> {
     const { limit, skip } = pageOptionsDto;
     const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
@@ -57,6 +56,7 @@ export class PortfolioAssetRepository {
       name: string;
       logo: string;
       price_per_unit: string;
+      price_at_calculation: string;
       value: string;
       change: string;
       change_percentage: string | null;
@@ -117,6 +117,7 @@ export class PortfolioAssetRepository {
         ad.name,
         ad.logo,
         ad.price_per_unit::text,
+        ad.price_at_calculation::text as price_at_calculation,
         (ad.amount * ad.price_per_unit)::text AS value,
         -- Price change: current price - price at the calculation time
         CASE 
@@ -137,9 +138,8 @@ export class PortfolioAssetRepository {
       OFFSET ${skip}
     `.execute(this.db.query);
 
-    const totalCount = results.rows.length > 0
-      ? Number(results.rows[0].total_count)
-      : 0;
+    const totalCount =
+      results.rows.length > 0 ? Number(results.rows[0].total_count) : 0;
     const pageMetaDto = new PageMetaDto({
       itemCount: totalCount,
       pageOptionsDto,
@@ -156,30 +156,26 @@ export class PortfolioAssetRepository {
           },
           value: Number(v.value),
           price_per_unit: Number(v.price_per_unit),
+          price_at_calculation: Number(v.price_at_calculation),
           change: Number(v.change),
           change_percentage: +v.change_percentage,
         })
       ),
-      pageMetaDto,
+      pageMetaDto
     );
   }
 
-  async findAssetAllocation(
-    portfolioIds: string | string[],
-    userId: string,
-  ) {
+  async findAssetAllocation(portfolioIds: string | string[], userId: string) {
     const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
 
-    const records = await sql<
-      {
-        symbol: string;
-        name: string;
-        logo: string;
-        amount: number;
-        value: number;
-        allocation_percentage: number;
-      }
-    >`
+    const records = await sql<{
+      symbol: string;
+      name: string;
+      logo: string;
+      amount: number;
+      value: number;
+      allocation_percentage: number;
+    }>`
             WITH authorized_portfolios AS (
                 -- Verify ownership of all portfolios
                 SELECT id
