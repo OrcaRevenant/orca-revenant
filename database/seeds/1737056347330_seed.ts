@@ -214,10 +214,10 @@ export async function seed(db: Kysely<any>): Promise<void> {
         symbol: "dot",
         logo: "https://bin.bnbstatic.com/static/assets/logos/DOT.png",
       },
-      {
-        name: "Iranian Toman",
-        symbol: "irt",
-      },
+      // {
+      //   name: "Iranian Toman",
+      //   symbol: "irt",
+      // },
     ])
     .execute();
 }

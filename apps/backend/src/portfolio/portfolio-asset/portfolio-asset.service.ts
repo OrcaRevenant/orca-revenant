@@ -13,6 +13,15 @@ export class PortfolioAssetService {
     return this.portfolioAssetRepository.insert(assets);
   }
 
+  async getAllByPortfolioId(portfolioIds: string | string[], userId: string) {
+    const calculationFrom = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    return this.portfolioAssetRepository.findAllByPortfolioId(
+      portfolioIds,
+      userId,
+      calculationFrom.toISOString()
+    );
+  }
   async getByPortfolioIdPaginated(
     id: string | string[],
     userId: string,
@@ -20,7 +29,7 @@ export class PortfolioAssetService {
   ) {
     const calculationFrom = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    return this.portfolioAssetRepository.findByPortfolioIdPaginated(
+    return this.portfolioAssetRepository.findAllByPortfolioIdPaginated(
       id,
       userId,
       pageOptionsDto,

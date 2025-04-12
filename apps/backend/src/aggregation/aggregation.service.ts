@@ -29,7 +29,7 @@ export class AggregationService {
     quote: string = "usdt"
   ) {
     const portfolioIds = await this.getPortfolioIds(id, userId, type);
-    return this.portfolioService.getAssets(
+    return this.portfolioService.getAssetsPaginated(
       portfolioIds,
       userId,
       pageOptionsDto,
@@ -69,7 +69,7 @@ export class AggregationService {
     quote: string = "usdt"
   ) {
     const portfolioIds = await this.getPortfolioIds(id, userId, type);
-    return this.portfolioService.getTransactions(
+    return this.portfolioService.getTransactionsPaginated(
       portfolioIds,
       userId,
       pageOptionsDto,
@@ -105,6 +105,24 @@ export class AggregationService {
       portfolioIds,
       userId,
       timeframe,
+      quote
+    );
+  }
+
+  async generateAdvice(
+    id: string,
+    userId: string,
+    messages: any[],
+    userLocation?: string,
+    type: PortfolioType = "portfolio",
+    quote: string = "usdt"
+  ) {
+    const portfolioIds = await this.getPortfolioIds(id, userId, type);
+    return this.portfolioService.generateAdvice(
+      portfolioIds,
+      userId,
+      messages,
+      userLocation,
       quote
     );
   }

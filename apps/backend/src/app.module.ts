@@ -20,6 +20,7 @@ import { PortfolioModule } from "./portfolio/portfolio.module";
 import { PriceModule } from "./price/price.module";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { AggregationModule } from "./aggregation/aggregation.module";
+import { AiAdvisorModule } from "./ai-advisor/ai-advisor.module";
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { AggregationModule } from "./aggregation/aggregation.module";
     ConnectionModule,
     PortfolioModule,
     AggregationModule,
+    AiAdvisorModule,
   ],
   controllers: [AppController],
   providers: [

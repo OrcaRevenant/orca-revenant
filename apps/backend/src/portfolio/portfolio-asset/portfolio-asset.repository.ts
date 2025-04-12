@@ -40,7 +40,7 @@ export class PortfolioAssetRepository {
     return true;
   }
 
-  async findByPortfolioIdPaginated(
+  async findAllByPortfolioIdPaginated(
     portfolioIds: string | string[],
     userId: string,
     pageOptionsDto: PageOptionsDto,
@@ -162,6 +162,115 @@ export class PortfolioAssetRepository {
         })
       ),
       pageMetaDto
+    );
+  }
+
+  async findAllByPortfolioId(
+    portfolioIds: string | string[],
+    userId: string,
+    calculationFrom: string
+  ): Promise<PopulatedPortfolioAsset[]> {
+    const ids = Array.isArray(portfolioIds) ? portfolioIds : [portfolioIds];
+
+    const results = await sql<{
+      asset: string;
+      amount: string;
+      symbol: string;
+      name: string;
+      logo: string;
+      price_per_unit: string;
+      price_at_calculation: string;
+      value: string;
+      change: string;
+      change_percentage: string | null;
+    }>`
+      WITH authorized_portfolios AS (
+        -- Verify ownership of all portfolios
+        SELECT id
+        FROM portfolio
+        WHERE id = ANY(${ids})
+          AND user_id = ${userId}
+      ),
+      aggregated_assets AS (
+        -- Aggregate current holdings across portfolios
+        SELECT 
+          pa.asset,
+          SUM(pa.amount) AS amount
+        FROM portfolio_assets pa
+        INNER JOIN authorized_portfolios ap 
+          ON pa.portfolio_id = ap.id
+        GROUP BY pa.asset
+      ),
+      asset_details AS (
+        -- For each asset, retrieve the current price and the price at the given calculation time
+        SELECT 
+          aa.asset,
+          aa.amount,
+          a.symbol,
+          a.name,
+          a.logo,
+          COALESCE(
+            (
+              SELECT price
+              FROM price
+              WHERE asset = aa.asset
+              ORDER BY time DESC
+              LIMIT 1
+            ), 0
+          ) AS price_per_unit,
+          COALESCE(
+            (
+              SELECT price
+              FROM price
+              WHERE asset = aa.asset
+                AND time <= ${calculationFrom}::timestamptz
+              ORDER BY time DESC
+              LIMIT 1
+            ), 0
+          ) AS price_at_calculation
+        FROM aggregated_assets aa
+        INNER JOIN asset a 
+          ON a.symbol = aa.asset
+      )
+      SELECT 
+        ad.asset,
+        ad.amount::text,
+        ad.symbol,
+        ad.name,
+        ad.logo,
+        ad.price_per_unit::text,
+        ad.price_at_calculation::text as price_at_calculation,
+        (ad.amount * ad.price_per_unit)::text AS value,
+        -- Price change: current price - price at the calculation time
+        CASE 
+          WHEN ad.price_per_unit > 0 OR ad.price_at_calculation > 0
+          THEN (ad.price_per_unit - ad.price_at_calculation)::text
+          ELSE '0'
+        END AS change,
+        -- Price change percentage: (current price - price at calculation) / price at calculation * 100
+        CASE 
+          WHEN ad.price_at_calculation > 0 
+          THEN (((ad.price_per_unit - ad.price_at_calculation) / ad.price_at_calculation) * 100)::text
+          ELSE '0'
+        END AS change_percentage
+      FROM asset_details ad
+      ORDER BY (ad.amount * ad.price_per_unit) DESC
+    `.execute(this.db.query);
+
+    return results.rows.map((v) =>
+      this.serialize({
+        ...v,
+        asset: {
+          symbol: v.symbol,
+          logo: v.logo,
+          name: v.name,
+        },
+        value: Number(v.value),
+        price_per_unit: Number(v.price_per_unit),
+        price_at_calculation: Number(v.price_at_calculation),
+        change: Number(v.change),
+        change_percentage: +v.change_percentage,
+      })
     );
   }
 

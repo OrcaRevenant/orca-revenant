@@ -1,9 +1,19 @@
-import { Controller, Get, Param, Query, Req, UseGuards } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+  Body,
+} from "@nestjs/common";
 import { JwtGuard } from "@/auth/jwt.guard";
 import { AuthUserRequest } from "@/shared/types/request.types";
 import { PageOptionsDto } from "@/pagination/dto";
 import { AggregationService } from "./aggregation.service";
 import { PortfolioType, Timeframe } from "@/portfolio/portfolio.types";
+import { AdvisorRequestDto } from "@/ai-advisor/dto/advisor-request.dto";
 
 @Controller("aggregation")
 @UseGuards(JwtGuard)
@@ -110,6 +120,28 @@ export class AggregationController {
       id,
       userId,
       timeframe,
+      type,
+      quote
+    );
+  }
+
+  @Post(":id/advice")
+  @UseGuards(JwtGuard)
+  async getAdvice(
+    @Req() req: AuthUserRequest,
+    @Param("id") id: string,
+    @Body() advisorRequest: AdvisorRequestDto,
+    @Query("type") type: PortfolioType,
+    @Query("quote") quote: string = "usdt"
+  ) {
+    const userId = req.user.sub;
+    const { messages, userLocation } = advisorRequest;
+
+    return this.aggregationService.generateAdvice(
+      id,
+      userId,
+      messages,
+      userLocation,
       type,
       quote
     );

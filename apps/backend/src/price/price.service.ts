@@ -129,6 +129,10 @@ export class PriceService extends PriceAbstract implements OnModuleInit {
     return this.priceRepository.bulkInsertUsingCopy(prices);
   }
 
+  getDefaultQuote(): string {
+    return this.config.defaultQuote;
+  }
+
   private async getAssetSymbols(): Promise<string[]> {
     const assets = await this.assetRepository.findAll();
     return assets.map((asset) => asset.symbol);
