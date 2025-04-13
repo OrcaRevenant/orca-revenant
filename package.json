@@ -21,7 +21,14 @@
     "turborepo",
     "pnpm",
     "bullmq",
-    "docusaurus"
+    "docusaurus",
+    "database",
+    "api",
+    "backend",
+    "data-processing",
+    "orm",
+    "serverless",
+    "fullstack"
   ],
   "main": "index.js",
   "scripts": {
