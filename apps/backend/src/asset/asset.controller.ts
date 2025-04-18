@@ -16,4 +16,10 @@ export class AssetController {
   ) {
     return this.assetService.getAssetHistoryStrict(symbol, timeframe, quote);
   }
+
+  @Get(":symbol/price")
+  @UseGuards(JwtGuard)
+  async getPrice(@Param("symbol") symbol: string, @Query("at") at?: Date) {
+    return this.assetService.getAssetPrice(symbol, at);
+  }
 }
