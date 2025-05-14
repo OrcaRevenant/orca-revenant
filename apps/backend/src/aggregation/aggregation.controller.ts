@@ -12,7 +12,11 @@ import { JwtGuard } from "@/auth/jwt.guard";
 import { AuthUserRequest } from "@/shared/types/request.types";
 import { PageOptionsDto } from "@/pagination/dto";
 import { AggregationService } from "./aggregation.service";
-import { PortfolioType, Timeframe } from "@/portfolio/portfolio.types";
+import {
+  PerformanceType,
+  PortfolioType,
+  Timeframe,
+} from "@/portfolio/portfolio.types";
 import { AdvisorRequestDto } from "@/ai-advisor/dto/advisor-request.dto";
 
 @Controller("aggregation")
@@ -113,6 +117,7 @@ export class AggregationController {
     @Param("id") id: string,
     @Query("timeframe") timeframe: Timeframe,
     @Query("type") type: PortfolioType,
+    @Query("performanceType") performanceType: PerformanceType = "best",
     @Query("quote") quote: string = "usdt"
   ) {
     const userId = req.user.sub;
@@ -121,6 +126,7 @@ export class AggregationController {
       userId,
       timeframe,
       type,
+      performanceType,
       quote
     );
   }

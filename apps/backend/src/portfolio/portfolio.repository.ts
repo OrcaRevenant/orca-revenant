@@ -506,6 +506,111 @@ export class PortfolioRepository {
     };
   }
 
+  async findWorstPerformingAsset(
+    portfolioId: string | string[],
+    userId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<{
+    asset: {
+      symbol: string;
+      name: string;
+      logo: string;
+    };
+    start_price: number;
+    current_price: number;
+    price_change: number;
+    percentage_change: number;
+    total_value: number;
+    pnl: number;
+    amount: number;
+  }> {
+    const ids = Array.isArray(portfolioId) ? portfolioId : [portfolioId];
+
+    await this.isOwner(ids, userId);
+
+    const result = await sql<{
+      asset: string;
+      name: string;
+      logo: string;
+      amount: string;
+      start_price: string;
+      current_price: string;
+      price_change: string;
+      percentage_change: string;
+      total_value: string;
+      pnl: string;
+    }>`
+        WITH portfolio_assets_aggregated AS (
+            SELECT 
+                pa.asset,
+                SUM(pa.amount) as amount
+            FROM portfolio_assets pa
+            WHERE pa.portfolio_id = ANY(${ids})
+            GROUP BY pa.asset
+        ),
+        asset_prices AS (
+            SELECT 
+                paa.asset,
+                paa.amount,
+                a.name,
+                a.logo,
+                a.alt_names,
+                first_price.price as start_price,
+                last_price.price as current_price,
+                (last_price.price - first_price.price) as price_change,
+                ((last_price.price - first_price.price) / NULLIF(first_price.price, 0) * 100) as percentage_change,
+                (paa.amount * last_price.price) as total_value,
+                (paa.amount * (last_price.price - first_price.price)) as pnl
+            FROM portfolio_assets_aggregated paa
+            INNER JOIN asset a ON a.symbol = paa.asset
+            LEFT JOIN LATERAL (
+                SELECT price
+                FROM price p
+                WHERE p.asset = paa.asset
+                AND p.time >= ${startDate}
+                ORDER BY p.time ASC
+                LIMIT 1
+            ) first_price ON true
+            LEFT JOIN LATERAL (
+                SELECT price
+                FROM price p
+                WHERE p.asset = paa.asset
+                AND p.time <= ${endDate}
+                ORDER BY p.time DESC
+                LIMIT 1
+            ) last_price ON true
+            WHERE paa.amount > 0
+        )
+        SELECT *
+        FROM asset_prices
+        ORDER BY percentage_change ASC
+        LIMIT 1;
+    `.execute(this.db.query);
+
+    if (result.rows.length === 0) {
+      throw new NotFoundException(
+        "No assets found for the specified portfolios"
+      );
+    }
+
+    const asset = result.rows[0];
+    return {
+      asset: {
+        symbol: asset.asset,
+        name: asset.name,
+        logo: asset.logo,
+      },
+      start_price: Number(asset.start_price),
+      current_price: Number(asset.current_price),
+      price_change: Number(asset.price_change),
+      percentage_change: Number(asset.percentage_change),
+      total_value: Number(asset.total_value),
+      pnl: Number(asset.pnl),
+      amount: Number(asset.amount),
+    };
+  }
+
   async populatePortfolio(
     portfolioInput: Portfolio[] | Portfolio
   ): Promise<PopulatedPortfolio[]> {

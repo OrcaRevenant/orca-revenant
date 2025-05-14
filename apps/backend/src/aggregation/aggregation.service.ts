@@ -1,7 +1,7 @@
 import { PageOptionsDto } from "@/pagination/dto";
 import { PortfolioGroupService } from "@/portfolio/portfolio-group/portfolio-group.service";
 import { PortfolioService } from "@/portfolio/portfolio.service";
-import { PortfolioType, Timeframe } from "@/portfolio/portfolio.types";
+import { PerformanceType, PortfolioType, Timeframe } from "@/portfolio/portfolio.types";
 import { Injectable } from "@nestjs/common";
 
 @Injectable()
@@ -98,6 +98,7 @@ export class AggregationService {
     userId: string,
     timeframe: Timeframe,
     type: PortfolioType,
+    performanceType: PerformanceType,
     quote: string = "usdt"
   ) {
     const portfolioIds = await this.getPortfolioIds(id, userId, type);
@@ -105,6 +106,7 @@ export class AggregationService {
       portfolioIds,
       userId,
       timeframe,
+      performanceType,
       quote
     );
   }

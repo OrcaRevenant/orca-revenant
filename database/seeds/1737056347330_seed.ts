@@ -88,7 +88,7 @@ export async function seed(db: Kysely<any>): Promise<void> {
         name: "mock",
         title: "Mock",
         type: "CEX",
-        logo: "https://img.icons8.com/?size=100&id=dxoYK8bxqiJr&format=png&color=000000",
+        logo: "http://127.0.0.1:54321/storage/v1/object/public/logos/connections/unknown.svg",
         description: "Mock is the best exchange in the orca.",
         schema: {
           type: "object",
@@ -106,7 +106,7 @@ export async function seed(db: Kysely<any>): Promise<void> {
         name: "nobitex",
         title: "Nobitex",
         type: "CEX",
-        logo: "https://upload.wikimedia.org/wikipedia/commons/c/ca/Nobitex-logo.png",
+        logo: "http://127.0.0.1:54321/storage/v1/object/public/logos/connections/nobitex.svg",
         description: "Nobitex is a digital currency exchange in Iran.",
         enabled: true,
         schema: {
@@ -124,7 +124,7 @@ export async function seed(db: Kysely<any>): Promise<void> {
         name: "coinex",
         title: "Coinex",
         type: "CEX",
-        logo: "https://www.coinex.com/assets/img/brand/svg/day-1.svg",
+        logo: "http://127.0.0.1:54321/storage/v1/object/public/logos/connections/coinex.svg",
         description: "Coinex",
         enabled: true,
         schema: {
@@ -167,52 +167,52 @@ export async function seed(db: Kysely<any>): Promise<void> {
       {
         name: "Bitcoin",
         symbol: "btc",
-        logo: "https://bin.bnbstatic.com/static/assets/logos/BTC.png",
+        logo: "http://127.0.0.1:54321/storage/v1/object/public/logos/assets/btc.svg",
       },
       {
         name: "Ethereum",
         symbol: "eth",
-        logo: "https://bin.bnbstatic.com/static/assets/logos/ETH.png",
+        logo: "http://127.0.0.1:54321/storage/v1/object/public/logos/assets/eth.svg",
       },
       {
         name: "Tether",
         symbol: "usdt",
-        logo: "https://bin.bnbstatic.com/static/assets/logos/USDT.png",
+        logo: "http://127.0.0.1:54321/storage/v1/object/public/logos/assets/usdt.svg",
       },
       {
         name: "USD Coin",
         symbol: "usdc",
-        logo: "https://bin.bnbstatic.com/static/assets/logos/USDC.png",
+        logo: "http://127.0.0.1:54321/storage/v1/object/public/logos/assets/usdc.svg",
       },
       {
         name: "Binance Coin",
         symbol: "bnb",
-        logo: "https://bin.bnbstatic.com/static/assets/logos/BNB.png",
+        logo: "http://127.0.0.1:54321/storage/v1/object/public/logos/assets/bnb.svg",
       },
       {
         name: "XRP",
         symbol: "xrp",
-        logo: "https://bin.bnbstatic.com/static/assets/logos/XRP.png",
+        logo: "http://127.0.0.1:54321/storage/v1/object/public/logos/assets/xrp.svg",
       },
       {
         name: "Cardano",
         symbol: "ada",
-        logo: "https://bin.bnbstatic.com/static/assets/logos/ADA.png",
+        logo: "http://127.0.0.1:54321/storage/v1/object/public/logos/assets/ada.svg",
       },
       {
         name: "Dogecoin",
         symbol: "doge",
-        logo: "https://bin.bnbstatic.com/static/assets/logos/DOGE.png",
+        logo: "http://127.0.0.1:54321/storage/v1/object/public/logos/assets/doge.svg",
       },
       {
         name: "Solana",
         symbol: "sol",
-        logo: "https://bin.bnbstatic.com/static/assets/logos/SOL.png",
+        logo: "http://127.0.0.1:54321/storage/v1/object/public/logos/assets/sol.svg",
       },
       {
         name: "Polkadot",
         symbol: "dot",
-        logo: "https://bin.bnbstatic.com/static/assets/logos/DOT.png",
+        logo: "http://127.0.0.1:54321/storage/v1/object/public/logos/assets/dot.svg",
       },
       // {
       //   name: "Iranian Toman",
