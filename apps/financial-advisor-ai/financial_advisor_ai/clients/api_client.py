@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional
 class OrcaApiClient:
     def __init__(self):
         self.api_url = "http://localhost:3000/"
-        self.api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vMTI3LjAuMC4xOjU0MzIxL2F1dGgvdjEiLCJzdWIiOiIxNmI4NDc1Yi1iMmU5LTRkNGMtYTU3Zi04MjU2MDE5OWE2MDkiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzQ1MDA4ODA1LCJpYXQiOjE3NDUwMDUyMDUsImVtYWlsIjoiYWRhbUBvcmNhLmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnt9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzQ1MDA1MjA1fV0sInNlc3Npb25faWQiOiJmMWRhMzIxZi05NDY5LTRiMWMtYjFmYi1iMWJiYmZiYjkxYWUiLCJpc19hbm9ueW1vdXMiOmZhbHNlfQ.Ab1ER8D1e8PJItOAGpoM2WuyFT5mS6Kaj5EpvEiTPwk"
+        self.api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vMTI3LjAuMC4xOjU0MzIxL2F1dGgvdjEiLCJzdWIiOiI3M2EzNWQ5My0wYzE5LTQ0YjAtYTllNi0yYmMxMTljYWNiZTMiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzQ4MzUwOTE0LCJpYXQiOjE3NDgzNDczMTQsImVtYWlsIjoiYWRhbUBvcmNhLmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnt9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzQ4MzQ3MzE0fV0sInNlc3Npb25faWQiOiJhMjNlYTlmMy1lODk2LTQzMTEtYmU3Zi1lMDJmNGRhODI0ZGUiLCJpc19hbm9ueW1vdXMiOmZhbHNlfQ.q-QfHwBzek-_BC4OM_xgEBi9qBB8ofXv03M8xs1uQEI"
 
         if not self.api_key:
             raise ValueError(
@@ -34,4 +34,4 @@ class OrcaApiClient:
 
         return requests.request(
             method=method, url=url, json=data, params=params, headers=headers
-        ) 
+        )

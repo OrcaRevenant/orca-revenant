@@ -1,0 +1,17 @@
+
+    Apple Inc. (AAPL) Q4 2023 Financial Results
+    
+    Apple reported record Q4 2023 revenue of $89.5 billion, up 1% year over year.
+    iPhone revenue was $43.8 billion, down 3% from the previous year.
+    Services revenue reached a new all-time high of $22.3 billion, up 16% year over year.
+    
+    Key Financial Metrics:
+    - Gross margin: 45.2%
+    - Operating margin: 30.1%
+    - Net income: $22.96 billion
+    - Earnings per share: $1.46
+    
+    The company returned over $24 billion to shareholders during the quarter through
+    dividends and share repurchases. Apple's cash and marketable securities totaled
+    $162.1 billion at the end of the quarter.
+    
