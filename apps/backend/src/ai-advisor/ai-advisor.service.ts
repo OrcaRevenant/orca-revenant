@@ -14,7 +14,6 @@ export class AiAdvisorService {
     @Inject(aiAdvisorConfig.KEY)
     private readonly config: ConfigType<typeof aiAdvisorConfig>
   ) {
-    console.log(this.config.apiKey);
     this.openai = new OpenAI({
       apiKey: this.config.apiKey,
     });

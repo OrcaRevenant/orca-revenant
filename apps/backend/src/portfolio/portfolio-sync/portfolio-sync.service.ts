@@ -25,8 +25,8 @@ export class PortfolioSyncService {
     @InjectQueue("portfolio-sync") private readonly queue: Queue
   ) {}
 
-  @OnEvent("backfill.completed")
-  async onPriceBackfillCompleted() {
+  @OnEvent("backfill.completed", { async: true })
+  onPriceBackfillCompleted() {
     this.syncInitialPortfolios();
   }
 

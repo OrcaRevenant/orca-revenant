@@ -1,5 +1,11 @@
 import { PartialType } from "@nestjs/mapped-types";
-import { IsHexColor, IsNotEmpty, IsObject, IsString } from "class-validator";
+import {
+  IsHexColor,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+} from "class-validator";
 import { PopulatedPortfolio, PortfolioStatus } from "./portfolio.types";
 import { Connection } from "@/connection/connection.types";
 import { PortfolioGroupUniqueIdentifier } from "./portfolio-group/portfolio-group.types";
@@ -18,6 +24,7 @@ export class CreatePortfolioDto {
   @IsNotEmpty()
   connection: string;
 
+  @IsOptional()
   @IsHexColor()
   color: string;
 }

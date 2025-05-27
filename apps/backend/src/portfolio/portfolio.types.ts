@@ -33,3 +33,6 @@ export interface PortfolioStatusUpdate {
 }
 
 export type Timeframe = "daily" | "weekly" | "monthly" | "yearly";
+
+
+export type PerformanceType = "best" | "worst";

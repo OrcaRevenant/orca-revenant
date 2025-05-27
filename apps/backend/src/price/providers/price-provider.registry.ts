@@ -5,77 +5,64 @@ import { PRICE_PROVIDER } from "./price-provider.constant";
 
 @Injectable()
 export class PriceProviderRegistry {
-    private providers: Map<string, PriceProviderAbstract> = new Map();
-    private providerList: PriceProviderAbstract[] = [];
+  private providers: Map<string, PriceProviderAbstract> = new Map();
+  private providerList: PriceProviderAbstract[] = [];
 
-    constructor(
-        private readonly discoveryService: DiscoveryService,
-    ) {
+  constructor(private readonly discoveryService: DiscoveryService) {}
+
+  async init() {
+    const providerWrappers = this.discoveryService.getProviders();
+
+    const priceProviders = providerWrappers.filter(
+      (wrapper) => wrapper.token === PRICE_PROVIDER && wrapper.instance
+    );
+
+    for (const providerWrapper of priceProviders) {
+      try {
+        const providerInstance =
+          providerWrapper.instance as PriceProviderAbstract;
+
+        const providerName = providerInstance.getName();
+        this.register(providerName, providerInstance);
+      } catch (error) {
+        console.error("Error registering provider:", error);
+      }
     }
+  }
 
-    async init() {
-        const providerWrappers = this.discoveryService.getProviders();
+  register(name: string, provider: PriceProviderAbstract): void {
+    this.providers.set(name, provider);
+    this.updateProviderList();
+  }
 
-        const priceProviders = providerWrappers.filter((wrapper) =>
-            wrapper.token === PRICE_PROVIDER && wrapper.instance
-        );
+  getProvider(asset: string): PriceProviderAbstract | null {
+    const supportingProviders = this.providerList
+      .filter((provider) => {
+        try {
+          const supports = provider.supports(asset);
 
-        for (const providerWrapper of priceProviders) {
-            try {
-                const providerInstance = providerWrapper
-                    .instance as PriceProviderAbstract;
-
-                const providerName = providerInstance.getName();
-                this.register(providerName, providerInstance);
-
-                console.log(
-                    `Discovered and registered provider: ${providerName} with priority: ${providerInstance.getPriority()}`,
-                );
-            } catch (error) {
-                console.error("Error registering provider:", error);
-            }
+          return supports;
+        } catch {
+          return false;
         }
+      })
+      .sort((a, b) => a.getPriority() - b.getPriority());
 
-        console.log(`Total providers registered: ${this.providers.size}`);
+    if (supportingProviders.length === 0) {
+      console.warn(`No provider found for asset ${asset}`);
+      return null;
     }
 
-    register(name: string, provider: PriceProviderAbstract): void {
-        console.log(`Registering provider: ${name}`);
-        this.providers.set(name, provider);
-        this.updateProviderList();
-    }
+    const selectedProvider = supportingProviders[0];
 
-    getProvider(asset: string): PriceProviderAbstract | null {
-        const supportingProviders = this.providerList
-            .filter((provider) => {
-                try {
-                    const supports = provider.supports(asset);
+    return selectedProvider;
+  }
 
-                    return supports;
-                } catch {
-                    return false;
-                }
-            })
-            .sort((a, b) => a.getPriority() - b.getPriority());
+  getAllProviders(): PriceProviderAbstract[] {
+    return [...this.providerList];
+  }
 
-        if (supportingProviders.length === 0) {
-            console.warn(`No provider found for asset ${asset}`);
-            return null;
-        }
-
-        const selectedProvider = supportingProviders[0];
-        console.log(
-            `Selected provider for ${asset}: ${selectedProvider.getName()} (priority: ${selectedProvider.getPriority()})`,
-        );
-
-        return selectedProvider;
-    }
-
-    getAllProviders(): PriceProviderAbstract[] {
-        return [...this.providerList];
-    }
-
-    private updateProviderList(): void {
-        this.providerList = [...this.providers.values()];
-    }
+  private updateProviderList(): void {
+    this.providerList = [...this.providers.values()];
+  }
 }

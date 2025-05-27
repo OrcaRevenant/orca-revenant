@@ -2,7 +2,12 @@ import { Injectable } from "@nestjs/common";
 import { PortfolioRepository } from "./portfolio.repository";
 import { PortfolioSyncService } from "@/portfolio/portfolio-sync/portfolio-sync.service";
 import { PageOptionsDto } from "@/pagination/dto";
-import { PopulatedPortfolio, Portfolio, Timeframe } from "./portfolio.types";
+import {
+  PerformanceType,
+  PopulatedPortfolio,
+  Portfolio,
+  Timeframe,
+} from "./portfolio.types";
 import { PortfolioAssetService } from "./portfolio-asset/portfolio-asset.service";
 import { TransactionService } from "@/transaction/transaction.service";
 import { CreatePortfolioDto, UpdatePortfolioDto } from "./portfolio.dto";
@@ -333,10 +338,18 @@ export class PortfolioService {
     id: string | string[],
     userId: string,
     timeframe: Timeframe,
+    performanceType: PerformanceType,
     quote: string = "usdt"
   ) {
     const { startDate, endDate } = calculateDateRange(timeframe);
-    return this.getAssetPerformance(id, userId, startDate, endDate, quote);
+    return this.getAssetPerformance(
+      id,
+      userId,
+      startDate,
+      endDate,
+      performanceType,
+      quote
+    );
   }
 
   async getAssetPerformance(
@@ -344,14 +357,26 @@ export class PortfolioService {
     userId: string,
     startDate: Date,
     endDate: Date,
+    performanceType: PerformanceType,
     quote: string = "usdt"
   ) {
-    const performance = await this.portfolioRepository.findBestPerformingAsset(
-      id,
-      userId,
-      startDate,
-      endDate
-    );
+    let performance;
+
+    if (performanceType === "best") {
+      performance = await this.portfolioRepository.findBestPerformingAsset(
+        id,
+        userId,
+        startDate,
+        endDate
+      );
+    } else {
+      performance = await this.portfolioRepository.findWorstPerformingAsset(
+        id,
+        userId,
+        startDate,
+        endDate
+      );
+    }
 
     const conversionRate = await this.priceConversionService.getConversionRate(
       quote,
