@@ -1,11 +1,10 @@
-import { INestApplication, ValidationPipe } from "@nestjs/common";
-import { ConfigService, ConfigType } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
-import * as fs from "fs";
-import { SpelunkerModule } from "nestjs-spelunker";
-import appConfig from "./app.config";
 import { AppModule } from "./app.module";
+import { ConfigService, ConfigType } from "@nestjs/config";
+import appConfig from "./app.config";
+import { ValidationPipe } from "@nestjs/common";
 import { ExceptionHandlerService } from "./common/exception/exception-handler.service";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -34,32 +33,20 @@ async function bootstrap() {
   app.useGlobalFilters(app.get(ExceptionHandlerService));
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
-  const port = config.get(`port`, { infer: true })!;
+  // Set up Swagger
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle("Orca API")
+    .setDescription("API documentation for Orca")
+    .setVersion("1.0")
+    .addTag("ai-advisor", "AI Financial Advisor")
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup("api/docs", app, document);
 
-  void generateDependencyGraph(app);
+  const port = config.get(`port`, { infer: true })!;
 
   await app.listen(port || 3000);
 }
 
 bootstrap();
-
-async function generateDependencyGraph(app: INestApplication) {
-  // Module dependencies graph
-  const tree = SpelunkerModule.explore(app);
-  const root = SpelunkerModule.graph(tree);
-  const edges = SpelunkerModule.findGraphEdges(root);
-  const mermaidEdges = edges
-    .map(({ from, to }) => `  ${from.module.name}-->${to.module.name}`)
-    // filter out modules from the chart if you need
-    .filter(
-      (edge) =>
-        !edge.includes("FilteredModule") && !edge.includes("OtherExample")
-    )
-    .sort();
-  // write into file
-  fs.writeFileSync(
-    "deps.mermaid",
-    `graph LR
-${mermaidEdges.join("\n")}`
-  );
-}

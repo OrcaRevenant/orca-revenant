@@ -21,7 +21,7 @@ export class AgentService {
 
   constructor(private readonly httpService: HttpService) {}
 
-  async askQuestion(
+  async ask(
     question: string,
     token: string,
     portfolioId: string

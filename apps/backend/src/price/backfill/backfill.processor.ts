@@ -4,12 +4,17 @@ import { JobData } from "./backfill.types";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import { PriceService } from "../price.service";
+import { InjectQueue } from "@nestjs/bullmq";
+import { Queue } from "bullmq";
 
 dayjs.extend(duration);
 
 @Processor("backfill", { concurrency: 5, lockDuration: 1_500_000 })
 export class BackfillProcessor extends WorkerHost {
-  constructor(private readonly priceService: PriceService) {
+  constructor(
+    private readonly priceService: PriceService,
+    @InjectQueue("backfill") private readonly queue: Queue
+  ) {
     super();
   }
 
@@ -26,9 +31,6 @@ export class BackfillProcessor extends WorkerHost {
   async process(job: Job<JobData>) {
     const { asset, from, to, resolution } = job.data;
 
-    console.log(
-      `Backfilling for ${asset} from ${from} to ${to} with the resolution of ${resolution} minutes`
-    );
     try {
       const historicalPrices = await this.priceService.getAssetHistoricalPrice(
         asset,

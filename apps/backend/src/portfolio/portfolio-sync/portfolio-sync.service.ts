@@ -25,8 +25,8 @@ export class PortfolioSyncService {
     @InjectQueue("portfolio-sync") private readonly queue: Queue
   ) {}
 
-  @OnEvent("backfill.completed")
-  async onPriceBackfillCompleted() {
+  @OnEvent("backfill.completed", { async: true })
+  onPriceBackfillCompleted() {
     this.syncInitialPortfolios();
   }
 
@@ -41,8 +41,6 @@ export class PortfolioSyncService {
     if (!portfolio) throw Error(`Prtfolio not provided`);
 
     await this.updateStatusAndSendEvent(portfolio, `syncing`);
-
-    // await new Promise((resolve) => setTimeout(resolve, 3000));
 
     const supportedAssets = await this.assetService.getAll();
 
@@ -152,9 +150,9 @@ export class PortfolioSyncService {
   }
 
   private async syncInitialPortfolios(syncThresholdMinutes: number = 60) {
-    // const portfolios = await this.portfolioService
-    //     .getUnsynced(syncThresholdMinutes);
-    const portfolios = await this.portfolioService.getAll();
+    const portfolios =
+      await this.portfolioService.getUnsynced(syncThresholdMinutes);
+    // const portfolios = await this.portfolioService.getAll();
 
     if (portfolios.length > 0) {
       console.log(`Syncing ${portfolios.length} portfolios...`);

@@ -39,8 +39,7 @@ export class PortfolioController {
   @UseGuards(JwtGuard)
   async getAll(@Req() req: AuthUserRequest) {
     const userId = req.user.sub;
-    const portfolios =
-      await this.portfolioService.findByUserIdPopulated(userId);
+    const portfolios = await this.portfolioService.getByUserIdPopulated(userId);
 
     return plainToInstance(PopulatedPortfolioResponseDto, portfolios, {
       excludeExtraneousValues: true,

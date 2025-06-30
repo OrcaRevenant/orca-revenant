@@ -7,7 +7,10 @@ import {
 } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
 import { SchedulerRegistry } from "@nestjs/schedule";
-import { OnEvent } from "@nestjs/event-emitter";
+import {
+  EventEmitter2,
+  EventEmitterReadinessWatcher,
+} from "@nestjs/event-emitter";
 import { CronJob } from "cron";
 
 import priceConfig from "./price.config";
@@ -17,7 +20,6 @@ import { PriceRepository } from "./price.repository";
 import { AssetRepository } from "@/asset/asset.repository";
 import { Price } from "./price.types";
 import { PriceProviderRegistry } from "./providers/price-provider.registry";
-
 @Injectable()
 export class PriceService extends PriceAbstract implements OnModuleInit {
   constructor(
@@ -27,44 +29,54 @@ export class PriceService extends PriceAbstract implements OnModuleInit {
     private readonly priceRepository: PriceRepository,
     private readonly assetRepository: AssetRepository,
     private readonly schedulerRegistry: SchedulerRegistry,
-    private readonly priceProviderRegistry: PriceProviderRegistry
+    private readonly priceProviderRegistry: PriceProviderRegistry,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly eventEmitterReadinessWatcher: EventEmitterReadinessWatcher
   ) {
     super();
   }
 
-  async onModuleInit() {
+  onModuleInit() {
+    this.bootstrap();
+  }
+
+  private async bootstrap() {
     await this.priceProviderRegistry.init();
 
-    console.log(`Draining queue...`);
-    try {
-      console.log("Attempting to pause queue...");
-      await this.backfillService.queue.pause();
+    await this.backfillService.queue.pause();
+    await this.backfillService.queue.drain();
+    await this.backfillService.queue.obliterate({ force: true });
 
-      console.log("Attempting to drain queue...");
-      await this.backfillService.queue.drain();
+    // Run initial backfill
+    await this.performBackfill();
 
-      console.log("Attempting to obliterate queue...");
-      await this.backfillService.queue.obliterate({ force: true });
+    while (true) {
+      const jobCounts = await this.backfillService.queue.getJobCounts();
+      if (jobCounts.active === 0 && jobCounts.waiting === 0) {
+        await this.backfillService.queue.drain();
 
-      console.log(`Queue drained successfully!`);
-      this.performBackfill();
-    } catch (error) {
-      console.error("Error during onModuleInit:", error.message);
-      console.error("Error stack:", error.stack);
+        await this.eventEmitterReadinessWatcher.waitUntilReady();
+        this.eventEmitter.emit("backfill.completed");
+
+        await this.performPriceUpdate();
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 
-  // @OnEvent("backfill.completed")
-  // async onPriceBackfillCompleted() {
-  //   await this.performBackfill();
+  private async performPriceUpdate() {
+    const job = new CronJob(this.config.updateCron, async () => {
+      const jobCounts = await this.backfillService.queue.getJobCounts();
+      // Only run if there are no active or waiting jobs
+      if (jobCounts.active === 0 && jobCounts.waiting === 0) {
+        await this.performBackfill();
+      }
+    });
 
-  //   const job = new CronJob(this.config.updateCron, async () => {
-  //     await this.performBackfill();
-  //   });
-
-  //   this.schedulerRegistry.addCronJob("updateAssetsPrice", job);
-  //   job.start();
-  // }
+    this.schedulerRegistry.addCronJob("backfill", job);
+    job.start();
+  }
 
   private async performBackfill() {
     const currentDate = dayjs();
@@ -85,16 +97,8 @@ export class PriceService extends PriceAbstract implements OnModuleInit {
         const gapSeconds = currentDate.diff(startTrackingFromDate, "seconds");
 
         if (gapSeconds <= stepMinutes * 60) {
-          //
-          console.log(
-            `No backfill needed for ${symbol}. Gap: ${Math.round(gapSeconds / 60)} minutes.`
-          );
           return; // Skip backfill if no gap or gap is too small
         }
-
-        console.log(
-          `Adding backfill job for ${symbol}: ${startTrackingFromDate.toISOString()} to ${endTrackingDate.toISOString()}`
-        );
 
         await this.backfillService.addBackfillJob(
           symbol,
@@ -120,13 +124,34 @@ export class PriceService extends PriceAbstract implements OnModuleInit {
       );
     }
 
-    console.log(`Using provider '${provider.getName()}' for asset '${asset}'`);
+    const rawPrices = await provider.getHistoricalPrice(
+      asset,
+      from,
+      to,
+      resolution
+    );
 
-    return provider.getHistoricalPrice(asset, from, to, resolution);
+    const validFromDate = dayjs(from);
+    const validToDate = dayjs(to);
+
+    // Filter prices to ensure they are strictly within the requested [from, to] range.
+    // This guards against providers returning out-of-bound data (e.g., future prices).
+    const filteredPrices = rawPrices.filter((p) => {
+      const priceTime = dayjs(p.time);
+      return (
+        !priceTime.isBefore(validFromDate) && !priceTime.isAfter(validToDate)
+      );
+    });
+
+    return filteredPrices;
   }
 
   async bulkInsert(prices: Price[]) {
     return this.priceRepository.bulkInsertUsingCopy(prices);
+  }
+
+  getDefaultQuote(): string {
+    return this.config.defaultQuote;
   }
 
   private async getAssetSymbols(): Promise<string[]> {
@@ -146,6 +171,19 @@ export class PriceService extends PriceAbstract implements OnModuleInit {
     }
 
     const lastPriceDate = dayjs(lastPriceTime);
-    return lastPriceDate.isAfter(currentDate) ? currentDate : lastPriceDate;
+
+    // Standardize to start of minute for comparison and return
+    const standardizedLastPriceDate = lastPriceDate.startOf("minute");
+    const standardizedCurrentDate = currentDate.startOf("minute");
+
+    if (standardizedLastPriceDate.isAfter(standardizedCurrentDate)) {
+      // If the last known price is in the future (after current minute),
+      // start tracking from the current minute.
+      return standardizedCurrentDate;
+    } else {
+      // Otherwise, start tracking from the minute AFTER the last known price
+      // to avoid duplicates when the backfill range is created.
+      return standardizedLastPriceDate.add(this.config.backfillStep, "minute");
+    }
   }
 }

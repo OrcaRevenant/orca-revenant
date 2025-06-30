@@ -24,6 +24,10 @@ export class AssetService {
     return this.getAssetHistory(symbol, startDate, endDate, resolution, quote);
   }
 
+  async getAssetPrice(symbol: string, at?: Date) {
+    return this.assetRepository.findAssetPrice(symbol, at);
+  }
+
   async getAssetHistory(
     symbol: string,
     startDate: Date,

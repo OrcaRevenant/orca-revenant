@@ -1,8 +1,35 @@
 {
   "name": "orca-revenant",
   "version": "1.0.0",
-  "description": "",
+  "description": "A modern, scalable platform built with a monorepo architecture using NestJS, Supabase, and Kysely for efficient data processing and management.",
   "author": "localX",
+  "homepage": "https://github.com/username/orca-revenant#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/username/orca-revenant.git"
+  },
+  "bugs": {
+    "url": "https://github.com/username/orca-revenant/issues"
+  },
+  "keywords": [
+    "nestjs",
+    "typescript",
+    "monorepo",
+    "supabase",
+    "kysely",
+    "postgresql",
+    "turborepo",
+    "pnpm",
+    "bullmq",
+    "docusaurus",
+    "database",
+    "api",
+    "backend",
+    "data-processing",
+    "orm",
+    "serverless",
+    "fullstack"
+  ],
   "main": "index.js",
   "scripts": {
     "build": "turbo build",

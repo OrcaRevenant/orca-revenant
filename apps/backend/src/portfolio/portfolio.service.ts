@@ -2,7 +2,12 @@ import { Injectable } from "@nestjs/common";
 import { PortfolioRepository } from "./portfolio.repository";
 import { PortfolioSyncService } from "@/portfolio/portfolio-sync/portfolio-sync.service";
 import { PageOptionsDto } from "@/pagination/dto";
-import { PopulatedPortfolio, Portfolio, Timeframe } from "./portfolio.types";
+import {
+  PerformanceType,
+  PopulatedPortfolio,
+  Portfolio,
+  Timeframe,
+} from "./portfolio.types";
 import { PortfolioAssetService } from "./portfolio-asset/portfolio-asset.service";
 import { TransactionService } from "@/transaction/transaction.service";
 import { CreatePortfolioDto, UpdatePortfolioDto } from "./portfolio.dto";
@@ -16,7 +21,7 @@ export class PortfolioService {
     private readonly portfolioSyncService: PortfolioSyncService,
     private readonly transactionService: TransactionService,
     private readonly portfolioAssetService: PortfolioAssetService,
-    private readonly priceConversionService: PriceConversionService
+    private readonly priceConversionService: PriceConversionService,
   ) {}
 
   async getBalance(
@@ -35,6 +40,39 @@ export class PortfolioService {
   }
 
   async getAssets(
+    id: string | string[],
+    userId: string,
+    quote: string = "usdt"
+  ) {
+    const result = await this.portfolioAssetService.getAllByPortfolioId(
+      id,
+      userId
+    );
+
+    const priceList = result.flatMap((asset) => [
+      {
+        asset: asset.asset,
+        price: asset.value,
+      },
+      {
+        asset: asset.asset,
+        price: asset.price_per_unit,
+      },
+    ]);
+
+    const convertedPrices = await this.priceConversionService.convertPrices(
+      priceList,
+      quote
+    );
+
+    return result.map((asset, index) => ({
+      ...asset,
+      value: convertedPrices[index * 2].price,
+      price_per_unit: convertedPrices[index * 2 + 1].price,
+    }));
+  }
+
+  async getAssetsPaginated(
     id: string | string[],
     userId: string,
     pageOptionsDto: PageOptionsDto,
@@ -129,10 +167,43 @@ export class PortfolioService {
   async getTransactions(
     id: string | string[],
     userId: string,
+    quote: string = "usdt"
+  ) {
+    const result = await this.transactionService.getAllByPortfolioId(
+      id,
+      userId
+    );
+
+    const priceList = result.flatMap((tx) => [
+      {
+        asset: tx.asset.symbol,
+        price: tx.value ?? 0,
+      },
+      {
+        asset: tx.portfolio.id,
+        price: tx.portfolio_total_value,
+      },
+    ]);
+
+    const convertedPrices = await this.priceConversionService.convertPrices(
+      priceList,
+      quote
+    );
+
+    return result.map((tx, index) => ({
+      ...tx,
+      value: tx.value === null ? null : convertedPrices[index * 2].price,
+      portfolio_total_value: convertedPrices[index * 2 + 1].price,
+    }));
+  }
+
+  async getTransactionsPaginated(
+    id: string | string[],
+    userId: string,
     pageOptionsDto: PageOptionsDto,
     quote: string = "usdt"
   ) {
-    const result = await this.transactionService.findByPortfolioIdPaginated(
+    const result = await this.transactionService.getAllByPortfolioIdPaginated(
       id,
       userId,
       pageOptionsDto
@@ -235,10 +306,18 @@ export class PortfolioService {
     id: string | string[],
     userId: string,
     timeframe: Timeframe,
+    performanceType: PerformanceType,
     quote: string = "usdt"
   ) {
     const { startDate, endDate } = calculateDateRange(timeframe);
-    return this.getAssetPerformance(id, userId, startDate, endDate, quote);
+    return this.getAssetPerformance(
+      id,
+      userId,
+      startDate,
+      endDate,
+      performanceType,
+      quote
+    );
   }
 
   async getAssetPerformance(
@@ -246,14 +325,26 @@ export class PortfolioService {
     userId: string,
     startDate: Date,
     endDate: Date,
+    performanceType: PerformanceType,
     quote: string = "usdt"
   ) {
-    const performance = await this.portfolioRepository.findBestPerformingAsset(
-      id,
-      userId,
-      startDate,
-      endDate
-    );
+    let performance;
+
+    if (performanceType === "best") {
+      performance = await this.portfolioRepository.findBestPerformingAsset(
+        id,
+        userId,
+        startDate,
+        endDate
+      );
+    } else {
+      performance = await this.portfolioRepository.findWorstPerformingAsset(
+        id,
+        userId,
+        startDate,
+        endDate
+      );
+    }
 
     const conversionRate = await this.priceConversionService.getConversionRate(
       quote,
@@ -291,13 +382,13 @@ export class PortfolioService {
     return this.portfolioRepository.populatePortfolio(portfolios);
   }
 
-  async findByUserId(userId: string): Promise<Portfolio[]> {
+  async getByUserId(userId: string): Promise<Portfolio[]> {
     const portfolio = await this.portfolioRepository.findByUser(userId);
     return portfolio;
   }
 
-  async findByUserIdPopulated(userId: string): Promise<PopulatedPortfolio[]> {
-    const portfolio = await this.findByUserId(userId);
+  async getByUserIdPopulated(userId: string): Promise<PopulatedPortfolio[]> {
+    const portfolio = await this.getByUserId(userId);
     return this.portfolioRepository.populatePortfolio(portfolio);
   }
 

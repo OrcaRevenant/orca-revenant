@@ -1,0 +1,25 @@
+
+    Microsoft Corporation (MSFT) Annual Report 2023
+    
+    Microsoft delivered strong financial performance in fiscal year 2023 with
+    revenue of $211.9 billion, representing 7% growth year over year.
+    
+    Segment Performance:
+    - Productivity and Business Processes: $69.3 billion (+9%)
+    - Intelligent Cloud: $87.9 billion (+16%)
+    - More Personal Computing: $54.7 billion (-9%)
+    
+    Cloud Services Growth:
+    Azure and other cloud services revenue grew 27% year over year.
+    Microsoft 365 Commercial products revenue increased 11%.
+    
+    Profitability Metrics:
+    - Operating income: $88.5 billion
+    - Net income: $72.4 billion
+    - Diluted earnings per share: $9.65
+    
+    The company's focus on AI and cloud computing continues to drive growth,
+    with significant investments in OpenAI and Azure infrastructure expansion.
+    Microsoft returned $20.4 billion to shareholders through dividends and
+    share repurchases during fiscal 2023.
+    

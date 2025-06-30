@@ -21,7 +21,7 @@ export class AgentController {
     this.logger.log(
       `Received question from frontend: ${body.question} for token: ${body.token} and portfolio: ${body.portfolio_id}`
     );
-    return this.agentService.askQuestion(
+    return this.agentService.ask(
       body.question,
       body.token,
       body.portfolio_id

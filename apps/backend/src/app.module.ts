@@ -32,7 +32,9 @@ import { ResponseInterceptor } from "./shared/interceptors/response.interceptor"
         development: [`.env.development.local`, `.env.development`, `.env`],
       }[process.env.NODE_ENV || `development`],
     }),
-    EventEmitterModule.forRoot(),
+    EventEmitterModule.forRoot({
+      global: true,
+    }),
     ExceptionModule,
     PassportModule,
     BullModule.forRoot({

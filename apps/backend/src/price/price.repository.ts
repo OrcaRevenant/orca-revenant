@@ -62,10 +62,10 @@ export class PriceRepository {
         );
 
         const copyQuery = `
-                    COPY price (asset, price, time)
-                    FROM STDIN
-                    WITH (FORMAT csv)
-                `;
+          COPY price (asset, price, time)
+          FROM STDIN
+          WITH (FORMAT csv)
+        `;
 
         const copyStream = client.query(copyFrom(copyQuery));
 

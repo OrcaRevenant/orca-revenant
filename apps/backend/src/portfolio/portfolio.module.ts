@@ -8,7 +8,7 @@ import { TransactionModule } from "@/transaction/transaction.module";
 import { DatabaseModule } from "@/database/database.module";
 import { PortfolioAssetModule } from "./portfolio-asset/portfolio-asset.module";
 import { PriceModule } from "@/price/price.module";
-import { PortfolioItemsOrderRepository } from './portfolio-group/portfolio-items-order.repository';
+import { PortfolioItemsOrderRepository } from "./portfolio-group/portfolio-items-order.repository";
 
 @Module({
   imports: [
@@ -18,7 +18,12 @@ import { PortfolioItemsOrderRepository } from './portfolio-group/portfolio-items
     forwardRef(() => PortfolioSyncModule),
     PriceModule,
   ],
-  providers: [PortfolioService, PortfolioRepository, PortfolioEventService, PortfolioItemsOrderRepository],
+  providers: [
+    PortfolioService,
+    PortfolioRepository,
+    PortfolioEventService,
+    PortfolioItemsOrderRepository,
+  ],
   controllers: [PortfolioController],
   exports: [PortfolioService, PortfolioEventService, PortfolioRepository],
 })

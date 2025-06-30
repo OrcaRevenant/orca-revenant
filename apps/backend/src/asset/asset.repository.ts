@@ -1,11 +1,20 @@
 import { Injectable } from "@nestjs/common";
 import { Asset } from "./asset.types";
 import { DatabaseService } from "@/database/database.service";
-import { sql } from "kysely";
+import { QueryResult, sql } from "kysely";
 
 @Injectable()
 export class AssetRepository {
   constructor(private readonly db: DatabaseService) {}
+
+  private serialize(asset: any): Asset {
+    return {
+      alt_names: asset.alt_names,
+      logo: asset.logo,
+      name: asset.name,
+      symbol: asset.symbol.toLowerCase(),
+    };
+  }
 
   async findAll(): Promise<Asset[]> {
     const assets = await this.db.query
@@ -13,7 +22,7 @@ export class AssetRepository {
       .selectAll()
       .execute();
 
-    return assets;
+    return assets.map(this.serialize);
   }
 
   async findAssetPriceHistory(
@@ -75,5 +84,36 @@ export class AssetRepository {
     }));
 
     return priceHistory;
+  }
+
+  async findAssetPrice(assetSymbol: string, at?: Date) {
+    let result: QueryResult<{ price: number; time: Date }>;
+
+    if (!at) {
+      // If no date is specified, get the latest price
+      result = await sql<{ price: number; time: Date }>`
+        SELECT price, time
+        FROM price
+        WHERE asset = ${assetSymbol}
+        ORDER BY time DESC
+        LIMIT 1
+      `.execute(this.db.query);
+    } else {
+      // If date is specified, get the closest price to that time
+      result = await sql<{ price: number; time: Date }>`
+        SELECT price, time
+        FROM price
+        WHERE asset = ${assetSymbol}
+        ORDER BY ABS(EXTRACT(EPOCH FROM (time - ${at}::timestamptz)))
+        LIMIT 1
+      `.execute(this.db.query);
+    }
+
+    return result.rows.length > 0
+      ? {
+          price: Number(result.rows[0].price),
+          time: result.rows[0].time,
+        }
+      : null;
   }
 }
