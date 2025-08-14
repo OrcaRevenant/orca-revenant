@@ -47,6 +47,6 @@ COPY --from=base /app/apps/backend/dist ./apps/backend/dist
 COPY --from=base /app/apps/backend/package.json ./apps/backend/package.json
 
 WORKDIR /app/apps/backend
-CMD ["node", "dist/src/main.js"]
+CMD ["node", "dist/main.js"]
 
 
