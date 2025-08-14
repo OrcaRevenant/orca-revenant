@@ -23,13 +23,19 @@ RUN pnpm --filter ./apps/backend... build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
+# Default environment variables (can be overridden at runtime)
 ENV NODE_ENV=production \
-    # Use host.docker.internal so the container can reach services running on your host
     PORT=3000 \
+    # Database configuration
     DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres \
+    # Supabase configuration
     SUPABASE_URL=http://host.docker.internal:54321 \
-    SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0 \
-    SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
+    # Redis configuration for BullMQ
+    REDIS_HOST=host.docker.internal \
+    REDIS_PORT=6379
+
+# Note: SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY should be passed at runtime
+# using docker run -e or docker-compose environment variables for better security
 
 # Expose Nest app port
 EXPOSE 3000
