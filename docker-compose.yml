@@ -19,8 +19,8 @@ services:
       # Application configuration
       - NODE_ENV=production
       - PORT=3000
-      # JWT configuration
-      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      # JWT configuration (used by Supabase auth)
+      - SUPABASE_SERVICE_SECRET=your-super-secret-jwt-key-change-in-production
     depends_on:
       - redis
     networks:
