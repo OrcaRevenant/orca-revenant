@@ -1,0 +1,47 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis-server
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: backend-server
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis-server
+      - REDIS_PORT=6379
+      # Override localhost addresses for Docker network
+      - DATABASE_URL=postgresql://postgres:postgres@supabase_db_orca-revenant:5432/postgres
+      - SUPABASE_URL=http://host.docker.internal:54321
+      - SUPABASE_SERVICE_SECRET=d00GTGz8QR68Srt12kGVEZuPsUIqBLAx
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - supabase_network_orca-revenant
+
+networks:
+  default:
+    name: orca-revenant-apps
+    external: true
+  supabase_network_orca-revenant:
+    external: true
