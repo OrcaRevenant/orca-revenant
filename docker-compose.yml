@@ -11,6 +11,8 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       timeout: 3s
       retries: 5
+    networks:
+      - app-network
 
   backend:
     build:
@@ -36,12 +38,11 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - default
-      - supabase_network_orca-revenant
+      - app-network
+      - supabase_default
 
 networks:
-  default:
-    name: orca-revenant-apps
-    external: true
-  supabase_network_orca-revenant:
+  app-network:
+    driver: bridge
+  supabase_default:
     external: true
