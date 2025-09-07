@@ -12,7 +12,7 @@ services:
       timeout: 3s
       retries: 5
     networks:
-      - app-network
+      - orca-revenant-network
 
   backend:
     build:
@@ -28,9 +28,10 @@ services:
       - REDIS_HOST=${REDIS_HOST:-redis-server}
       - REDIS_PORT=${REDIS_PORT:-6379}
       # Override localhost addresses for Docker network
-      - DATABASE_URL=${DATABASE_URL}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_SECRET=${SUPABASE_SERVICE_SECRET}
+      - DATABASE_URL=postgres://postgres:your-super-secret-and-long-postgres-password@db:5432/postgres
+      - SUPABASE_URL=http://orca-revenant-supabase-network:54321
+      - SUPABASE_SERVICE_SECRET=your-super-secret-jwt-token-with-at-least-32-characters-long
+      - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJzZXJ2aWNlX3JvbGUiLAogICAgImlzcyI6ICJzdXBhYmFzZS1kZW1vIiwKICAgICJpYXQiOiAxNjQxNzY5MjAwLAogICAgImV4cCI6IDE3OTk1MzU2MDAKfQ.DaYlNEoUrrEn2Ig7tqibS-PHK5vgusbcbo7X36XVt4Q
     depends_on:
       redis:
         condition: service_healthy
@@ -38,11 +39,26 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - app-network
-      - supabase_default
+      - orca-revenant-network
+      - orca-revenant-supabase-network
+    # Add healthcheck for backend
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 networks:
-  app-network:
+  orca-revenant-network:
     driver: bridge
-  supabase_default:
+  orca-revenant-supabase-network:
     external: true
