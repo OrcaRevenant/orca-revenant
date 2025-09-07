@@ -44,7 +44,12 @@
     "db:update:max_locks_per_transaction": "docker exec -it supabase_db_orca-revenant bash -c 'echo \"max_locks_per_transaction = '128'\" >> /etc/postgresql/postgresql.conf && su postgres -c \"/usr/lib/postgresql/bin/pg_ctl reload\"'",
     "db:reset": "supabase db reset && pnpm run db:update:max_locks_per_transaction && pnpm kysely migrate:latest --cwd ./database && pnpm kysely seed:run --cwd ./database && pnpm typegen",
     "db:dump": "docker exec supabase_db_orca-revenant pg_dump -U postgres -d postgres --data-only --rows-per-insert=1000 -f /tmp/dump.sql && docker cp supabase_db_orca-revenant:/tmp/dump.sql ./dump.sql",
-    "db:restore": "docker exec -i supabase_db_orca-revenant psql -U postgres -d \"$DATABASE_URL\" -v ON_ERROR_STOP=0 < dump_price.sql"
+    "db:restore": "docker exec -i supabase_db_orca-revenant psql -U postgres -d \"$DATABASE_URL\" -v ON_ERROR_STOP=0 < dump_price.sql",
+    "db:migration:setup": "psql \"postgresql://postgres:your-super-secret-and-long-postgres-password@127.0.0.1:5433/postgres\" -c \"DROP TABLE IF EXISTS kysely_migration_lock CASCADE; DROP TABLE IF EXISTS kysely_migration CASCADE; CREATE TABLE kysely_migration (name VARCHAR(255) NOT NULL, timestamp VARCHAR(255) NOT NULL, PRIMARY KEY (name)); CREATE TABLE kysely_migration_lock (id VARCHAR(255) NOT NULL, is_locked BOOLEAN NOT NULL DEFAULT FALSE, PRIMARY KEY (id));\"",
+    "db:migration:setup:soft": "psql \"postgresql://postgres:your-super-secret-and-long-postgres-password@127.0.0.1:5433/postgres\" -c \"CREATE TABLE IF NOT EXISTS kysely_migration (name VARCHAR(255) NOT NULL, timestamp VARCHAR(255) NOT NULL, PRIMARY KEY (name)); CREATE TABLE IF NOT EXISTS kysely_migration_lock (id VARCHAR(255) NOT NULL, is_locked BOOLEAN NOT NULL DEFAULT FALSE, PRIMARY KEY (id));\"",
+    "db:migration:latest": "pnpm run db:migration:setup:soft && pnpm kysely migrate:latest --cwd ./database",
+    "db:migration:clean": "pnpm run db:migration:setup && pnpm kysely migrate:latest --cwd ./database",
+    "db:migration:seed": "pnpm kysely seed:run --cwd ./database"
   },
   "license": "ISC",
   "dependencies": {
