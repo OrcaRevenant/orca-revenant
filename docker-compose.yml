@@ -33,16 +33,16 @@ services:
       - REDIS_PORT=${REDIS_PORT:-6379}
 
       # Point to Supabase Postgres service (service name is "db" in your Supabase compose)
-      - DATABASE_URL=postgresql://postgres:uT5jT6Wds9VhB2lMtJ8oaBtB6Kx22rLgUvfTJHat1qsOrChT695hR7b0aohWlJsj@db:5432/postgres
+      - DATABASE_URL={$DATABASE_URL}
 
       # Point to Supabase Kong gateway (service name typically "supabase-kong")
       # If your Supabase stack uses "kong" instead, change to http://kong:8000
-      - SUPABASE_URL=http://supabase-kong:8000
+      - SUPABASE_URL={$SUPABASE_URL}
 
       # These should match your Supabase .env
-      - SUPABASE_SERVICE_SECRET=01ff07d4598e7fe1ced2f9bf42ae42108acff7e99ac23199dca15e4c2071e227
-      - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTU5ODI4MDAsImV4cCI6MTkxMzc0OTIwMH0.gss_ZR8HjRtiyTGXT3WfrgTENOlj2lD77fJBinmeZMw
-      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU1OTgyODAwLCJleHAiOjE5MTM3NDkyMDB9.ttP63Al4AAJYZD8qF1Ph9HM6-dqiofeFK1Znkzlzckc
+      - SUPABASE_SERVICE_SECRET={$SUPABASE_SERVICE_SECRET}
+      - SUPABASE_SERVICE_ROLE_KEY={$SUPABASE_SERVICE_ROLE_KEY}
+      - SUPABASE_ANON_KEY={$SUPABASE_ANON_KEY}
 
     depends_on:
       redis:
