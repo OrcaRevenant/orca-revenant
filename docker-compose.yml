@@ -28,10 +28,11 @@ services:
       - REDIS_HOST=${REDIS_HOST:-redis-server}
       - REDIS_PORT=${REDIS_PORT:-6379}
       # Override localhost addresses for Docker network
-      - DATABASE_URL=postgres://postgres:your-super-secret-and-long-postgres-password@db:5432/postgres
+      - DATABASE_URL=postgresql://supabase_admin:uT5jT6Wds9VhB2lMtJ8oaBtB6Kx22rLgUvfTJHat1qsOrChT695hR7b0aohWlJsj@supabase-db:5432/postgres
       - SUPABASE_URL=http://orca-revenant-supabase-network:54321
-      - SUPABASE_SERVICE_SECRET=your-super-secret-jwt-token-with-at-least-32-characters-long
-      - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJzZXJ2aWNlX3JvbGUiLAogICAgImlzcyI6ICJzdXBhYmFzZS1kZW1vIiwKICAgICJpYXQiOiAxNjQxNzY5MjAwLAogICAgImV4cCI6IDE3OTk1MzU2MDAKfQ.DaYlNEoUrrEn2Ig7tqibS-PHK5vgusbcbo7X36XVt4Q
+      - SUPABASE_SERVICE_SECRET=01ff07d4598e7fe1ced2f9bf42ae42108acff7e99ac23199dca15e4c2071e227
+      - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NTU5ODI4MDAsImV4cCI6MTkxMzc0OTIwMH0.gss_ZR8HjRtiyTGXT3WfrgTENOlj2lD77fJBinmeZMw
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzU1OTgyODAwLCJleHAiOjE5MTM3NDkyMDB9.ttP63Al4AAJYZD8qF1Ph9HM6-dqiofeFK1Znkzlzckc
     depends_on:
       redis:
         condition: service_healthy
