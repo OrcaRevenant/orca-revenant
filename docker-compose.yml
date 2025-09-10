@@ -33,7 +33,7 @@ services:
       - REDIS_PORT=${REDIS_PORT:-6379}
 
       # Point to Supabase Postgres service (service name is "db" in your Supabase compose)
-      - DATABASE_URL=postgresql://supabase_admin:uT5jT6Wds9VhB2lMtJ8oaBtB6Kx22rLgUvfTJHat1qsOrChT695hR7b0aohWlJsj@db:5432/postgres
+      - DATABASE_URL=postgresql://postgres:uT5jT6Wds9VhB2lMtJ8oaBtB6Kx22rLgUvfTJHat1qsOrChT695hR7b0aohWlJsj@localhost:5432/postgres
 
       # Point to Supabase Kong gateway (service name typically "supabase-kong")
       # If your Supabase stack uses "kong" instead, change to http://kong:8000
