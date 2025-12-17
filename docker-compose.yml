@@ -46,8 +46,6 @@ services:
     networks:
       # Your app's own internal network (for redis)
       - orca-revenant-network
-      # Shared external network where Supabase services live
-      - orca-revenant-supabase-network
 
     healthcheck:
       test:
@@ -63,3 +61,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+networks:
+  orca-revenant-network:
+    driver: bridge
