@@ -26,16 +26,9 @@ services:
     environment:
       - REDIS_HOST=${REDIS_HOST:-redis-server}
       - REDIS_PORT=${REDIS_PORT:-6379}
-
-      # Point to Supabase Postgres service (service name is "db" in your Supabase compose)
-      - DATABASE_URL=postgresql:postgresql://postgres:MQ7ARcpSPL0bEh97tdNck3a6c4fWt722@127.0.0.1:5432/postgres
-
-      # Point to Supabase Kong gateway (service name typically "supabase-kong")
-      # If your Supabase stack uses "kong" instead, change to http://kong:8000
-      - SUPABASE_URL=https://supabase.orca-tracker.com
-
-      # These should match your Supabase .env
-      - SUPABASE_ANON_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NTgxMzk4MCwiZXhwIjo0OTIxNDg3NTgwLCJyb2xlIjoiYW5vbiJ9.Rz3LCfH6vaXW8eWBlJfqBtejMG_qZbWJ1Il1KSdOTTs
+      - DATABASE_URL=${DATABASE_URL}
+      - SUPABASE_URL=${SUPABASE_URL:-https://supabase.orca-tracker.com}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NTgxMzk4MCwiZXhwIjo0OTIxNDg3NTgwLCJyb2xlIjoiYW5vbiJ9.Rz3LCfH6vaXW8eWBlJfqBtejMG_qZbWJ1Il1KSdOTTs}
 
     depends_on:
       redis:
@@ -44,7 +37,6 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      # Your app's own internal network (for redis)
       - orca-revenant-network
 
     healthcheck:
