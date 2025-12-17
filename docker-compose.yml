@@ -63,11 +63,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-networks:
-  orca-revenant-network:
-    driver: bridge
-
-  # This must already exist and be the same network your Supabase stack uses
-  orca-revenant-supabase-network:
-    external: true
