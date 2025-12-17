@@ -20,8 +20,6 @@ services:
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    networks:
-      - orca-revenant-network
 
     healthcheck:
       test:
@@ -37,7 +35,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-networks:
-  orca-revenant-network:
-    driver: bridge
