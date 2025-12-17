@@ -1,19 +1,4 @@
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: redis-server
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      timeout: 3s
-      retries: 5
-    networks:
-      - orca-revenant-network
-
   backend:
     build:
       context: .
@@ -24,7 +9,7 @@ services:
     env_file:
       - .env
     environment:
-      - REDIS_HOST=${REDIS_HOST:-redis-server}
+      - REDIS_HOST=${REDIS_HOST=redis-database-x4gwck04cgggg0ogoc8wko04}
       - REDIS_PORT=${REDIS_PORT:-6379}
       - DATABASE_URL=${DATABASE_URL}
       - SUPABASE_URL=${SUPABASE_URL:-https://supabase.orca-tracker.com}
@@ -32,9 +17,6 @@ services:
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NTgxMzk4MCwiZXhwIjo0OTIxNDg3NTgwLCJyb2xlIjoic2VydmljZV9yb2xlIn0.tRtmmyHDKgxj8UHcwyQwvq7P5t9zApbUfy52d3_OEwc}
       - SUPABASE_SERVICE_SECRET=${SUPABASE_SERVICE_SECRET}
 
-    depends_on:
-      redis:
-        condition: service_healthy
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
