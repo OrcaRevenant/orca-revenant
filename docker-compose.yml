@@ -12,6 +12,7 @@ services:
       - REDIS_HOST=${REDIS_HOST:-redis-database-esg084cgksk0wsw0wowkogsg}
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_USERNAME=${REDIS_USERNAME}
       - DATABASE_URL=${DATABASE_URL}
       - SUPABASE_URL=${SUPABASE_URL:-https://supabase.orca-tracker.com}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NTgxMzk4MCwiZXhwIjo0OTIxNDg3NTgwLCJyb2xlIjoiYW5vbiJ9.Rz3LCfH6vaXW8eWBlJfqBtejMG_qZbWJ1Il1KSdOTTs}
