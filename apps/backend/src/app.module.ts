@@ -39,10 +39,10 @@ import { ResponseInterceptor } from "./shared/interceptors/response.interceptor"
     PassportModule,
     BullModule.forRoot({
       connection: {
-        host: process.env.REDIS_HOST || "redis",
-        port: parseInt(process.env.REDIS_PORT || "6379"),
+        host: process.env.REDIS_HOST!,
+        port: Number(process.env.REDIS_PORT ?? 6379),
         username: "default",
-        password: process.env.REDIS_PASSWORD || "",
+        password: process.env.REDIS_PASSWORD!,
       },
     }),
     BullBoardModule.forRoot({
