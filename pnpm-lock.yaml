@@ -118,8 +118,8 @@ importers:
         specifier: ^5.0.2
         version: 5.0.2
       ioredis:
-        specifier: ^5.4.2
-        version: 5.4.2
+        specifier: ^5.8.2
+        version: 5.8.2
       kysely:
         specifier: ^0.27.5
         version: 0.27.5
@@ -622,8 +622,8 @@ packages:
     resolution: {integrity: sha512-93zYdMES/c1D69yZiKDBj0V24vqNzB/koF26KPaagAfd3P/4gUlh3Dys5ogAK+Exi9QyzlD8x/08Zt7wIKcDcA==}
     deprecated: Use @eslint/object-schema instead
 
-  '@ioredis/commands@1.2.0':
-    resolution: {integrity: sha512-Sx1pU8EM64o2BrqNpEO1CNLtKQwyhuXuqyfH7oGKCk+1a33d2r5saW8zNwm3j6BTExtjrv2BxTgzzkMwts6vGg==}
+  '@ioredis/commands@1.4.0':
+    resolution: {integrity: sha512-aFT2yemJJo+TZCmieA7qnYGQooOS7QfNmYrzGtsYd3g9j5iDP8AimYYAesf79ohjbLG12XxC4nG5DyEnC88AsQ==}
 
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -2295,8 +2295,8 @@ packages:
     resolution: {integrity: sha512-agE4QfB2Lkp9uICn7BAqoscw4SZP9kTE2hxiFI3jBPmXJfdqiahTbUuKGsMoN2GtqL9AxhYioAcVvgsb1HvRbA==}
     engines: {node: '>= 0.10'}
 
-  ioredis@5.4.2:
-    resolution: {integrity: sha512-0SZXGNGZ+WzISQ67QDyZ2x0+wVxjjUndtD8oSeik/4ajifeiRufed8fCb8QW8VMyi4MXcS+UO1k/0NGhvq1PAg==}
+  ioredis@5.8.2:
+    resolution: {integrity: sha512-C6uC+kleiIMmjViJINWk80sOQw5lEzse1ZmvD+S/s8p8CWapftSaC+kocGTx6xrbrJ4WmYQGC08ffHLr6ToR6Q==}
     engines: {node: '>=12.22.0'}
 
   ipaddr.js@1.9.1:
@@ -4363,7 +4363,7 @@ snapshots:
 
   '@humanwhocodes/object-schema@2.0.3': {}
 
-  '@ioredis/commands@1.2.0': {}
+  '@ioredis/commands@1.4.0': {}
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -5439,7 +5439,7 @@ snapshots:
   bullmq@5.34.4:
     dependencies:
       cron-parser: 4.9.0
-      ioredis: 5.4.2
+      ioredis: 5.8.2
       msgpackr: 1.11.2
       node-abort-controller: 3.1.1
       semver: 7.6.3
@@ -6358,9 +6358,9 @@ snapshots:
 
   interpret@1.4.0: {}
 
-  ioredis@5.4.2:
+  ioredis@5.8.2:
     dependencies:
-      '@ioredis/commands': 1.2.0
+      '@ioredis/commands': 1.4.0
       cluster-key-slot: 1.1.2
       debug: 4.4.0
       denque: 2.1.0

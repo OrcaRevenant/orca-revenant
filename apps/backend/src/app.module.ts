@@ -41,8 +41,9 @@ import { ResponseInterceptor } from "./shared/interceptors/response.interceptor"
       connection: {
         host: (process.env.REDIS_HOST || "localhost").trim().replace(/=$/, ""),
         port: parseInt(process.env.REDIS_PORT || "6379"),
+        username: process.env.REDIS_USERNAME || "default",
         password: process.env.REDIS_PASSWORD || "",
-        username: process.env.REDIS_USERNAME || "",
+        lazyConnect: true,
       },
     }),
     BullBoardModule.forRoot({
