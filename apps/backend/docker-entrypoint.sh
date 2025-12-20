@@ -47,6 +47,15 @@ else
   fi
 
   echo "✅ Migrations completed successfully"
+
+  # Run seeds
+  echo "🌱 Running database seeds..."
+  if ! pnpm kysely seed:run --cwd ./database; then
+    echo "⚠️  Warning: Seed failed, but continuing..."
+    # Seeds are often idempotent or optional, so we don't fail the startup
+  else
+    echo "✅ Seeds completed successfully"
+  fi
 fi
 
 # Start the application
