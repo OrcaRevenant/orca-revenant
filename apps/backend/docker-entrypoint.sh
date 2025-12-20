@@ -8,7 +8,7 @@ if [ -z "$DATABASE_URL" ]; then
   echo "⚠️  WARNING: DATABASE_URL is not set. Skipping migrations."
 else
   echo "📦 Running database migrations..."
-  
+
   # Setup migration tables if they don't exist
   echo "Setting up migration tables..."
   node -e "
@@ -26,10 +26,10 @@ else
         PRIMARY KEY (id)
       );
     \`).then(() => {
-      console.log('Migration tables ready');
+      console.log('✅ Migration tables ready');
       pool.end();
     }).catch((err) => {
-      console.error('Error setting up migration tables:', err.message);
+      console.error('❌ Error setting up migration tables:', err.message);
       pool.end();
       process.exit(1);
     });
@@ -37,15 +37,15 @@ else
     echo "❌ Failed to setup migration tables"
     exit 1
   }
-  
+
   # Run migrations
   echo "Running migrations..."
-  cd /app/database
-  pnpm kysely migrate:latest || {
+  cd /app
+  if ! pnpm kysely migrate:latest --cwd ./database; then
     echo "❌ Migration failed"
     exit 1
-  }
-  
+  fi
+
   echo "✅ Migrations completed successfully"
 fi
 
