@@ -1,14 +1,22 @@
-import { NestFactory } from "@nestjs/core";
-import { AppModule } from "./app.module";
-import { ConfigService, ConfigType } from "@nestjs/config";
-import appConfig from "./app.config";
 import { ValidationPipe } from "@nestjs/common";
-import { ExceptionHandlerService } from "./common/exception/exception-handler.service";
+import { ConfigService, ConfigType } from "@nestjs/config";
+import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import appConfig from "./app.config";
+import { AppModule } from "./app.module";
+import { ExceptionHandlerService } from "./common/exception/exception-handler.service";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService<ConfigType<typeof appConfig>>);
+
+  // Enable CORS
+  app.enableCors({
+    origin: process.env.FRONTEND_URL || true, // Allow all origins in dev, specific URL in production
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+  });
 
   app.useGlobalFilters(app.get(ExceptionHandlerService));
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
